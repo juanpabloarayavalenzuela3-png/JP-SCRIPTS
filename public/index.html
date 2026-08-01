@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Creador RAW Permantente</title>
+  <title>Creador RAW Protegido</title>
   <style>
     body { background: #111; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
     h2 { color: #00ff66; margin-bottom: 10px; }
@@ -32,7 +32,7 @@
 
   <textarea id="code" placeholder="print('Hola mundo')"></textarea>
 
-  <button onclick="generar()">Generar RAW Protegido</button>
+  <button onclick="subir()">Generar RAW Protegido</button>
 
   <h3>Enlace RAW para Delta:</h3>
   <input type="text" id="resultado" readonly placeholder="Aquí aparecerá tu link..." />
@@ -43,7 +43,7 @@
     function cargarArchivo(input) {
       const file = input.files[0];
       if (!file) return;
-      document.getElementById('file-name').innerText = "Cargado: " + file.name;
+      document.getElementById('file-name').innerText = "Cargado: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
       
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -52,15 +52,28 @@
       reader.readAsText(file);
     }
 
-    function generar() {
+    async function subir() {
       const text = fileContent || document.getElementById('code').value;
       if (!text) return alert('Por favor selecciona un archivo o pega un script');
 
-      // Convertir a Base64 en el navegador
-      const encoded = btoa(unescape(encodeURIComponent(text)));
-      const fullUrl = window.location.origin + "/raw?code=" + encoded;
+      document.getElementById('resultado').value = "Procesando script gigante...";
 
-      document.getElementById('resultado').value = fullUrl;
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: text
+        });
+        const data = await res.json();
+        if (data.raw_url) {
+          document.getElementById('resultado').value = data.raw_url;
+        } else {
+          alert('Error al generar el link');
+        }
+      } catch (err) {
+        alert('Error al subir el archivo');
+        document.getElementById('resultado').value = "";
+      }
     }
   </script>
 </body>
