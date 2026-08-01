@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creador RAW Protegido</title>
+  <style>
+    body { background: #111; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
+    h2 { color: #00ff66; margin-bottom: 10px; }
+    .file-box { border: 2px dashed #00ff66; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 15px; background: #1a1a1a; }
+    input[type="file"] { display: none; }
+    .custom-file-upload { background: #222; color: #00ff66; padding: 10px 15px; border: 1px solid #00ff66; border-radius: 6px; display: inline-block; cursor: pointer; font-weight: bold; margin-top: 5px; }
+    textarea { width: 100%; height: 140px; background: #222; color: #00ff66; border: 1px solid #444; padding: 10px; box-sizing: border-box; font-family: monospace; border-radius: 6px; }
+    button { width: 100%; background: #00ff66; color: #000; font-weight: bold; padding: 14px; border: none; margin-top: 10px; border-radius: 6px; font-size: 16px; }
+    input[type="text"] { width: 100%; padding: 12px; margin-top: 10px; background: #222; color: #fff; border: 1px solid #444; box-sizing: border-box; border-radius: 6px; font-size: 14px; }
+    .status { color: #aaa; font-size: 12px; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <h2>Cargar Script Lua</h2>
+
+  <div class="file-box">
+    <span>📁 Selecciona tu archivo <b>.lua</b> o <b>.txt</b>:</span><br><br>
+    <label for="file-upload" class="custom-file-upload">
+      Seleccionar Archivo
+    </label>
+    <input id="file-upload" type="file" accept=".lua,.txt" onchange="cargarArchivo(this)"/>
+    <div id="file-name" class="status">No se ha seleccionado archivo</div>
+  </div>
+
+  <p style="text-align: center; color: #666;">— O pega el texto si es corto —</p>
+
+  <textarea id="code" placeholder="print('Hola mundo')"></textarea>
+
+  <button onclick="subir()">Generar RAW Protegido</button>
+
+  <h3>Enlace RAW para Delta:</h3>
+  <input type="text" id="resultado" readonly placeholder="Aquí aparecerá tu link..." />
+
+  <script>
+    let fileContent = "";
+
+    function cargarArchivo(input) {
+      const file = input.files[0];
+      if (!file) return;
+      document.getElementById('file-name').innerText = "Cargado: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        fileContent = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    async function subir() {
+      const text = fileContent || document.getElementById('code').value;
+      if (!text) return alert('Por favor selecciona un archivo o pega un script');
+
+      document.getElementById('resultado').value = "Procesando script gigante...";
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: text
+        });
+        const data = await res.json();
+        document.getElementById('resultado').value = data.raw_url;
+      } catch (err) {
+        alert('Error al subir el archivo');
+        document.getElementById('resultado').value = "";
+      }
+    }
+  </script>
+</body>
+</html>
