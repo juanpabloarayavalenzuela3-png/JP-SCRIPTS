@@ -42,11 +42,16 @@
       text-align: center;
       background: #1a1a1e;
       cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .drop-zone:hover {
+      background: #222228;
     }
 
     textarea {
       width: 100%;
-      height: 140px;
+      height: 120px;
       background-color: #202024;
       border: 1px solid #323238;
       border-radius: 6px;
@@ -76,13 +81,12 @@
       background-color: #00c853;
     }
 
-    .btn-blue {
-      background-color: #29b6f6;
-      color: #000;
-    }
-
-    .btn-blue:hover {
-      background-color: #0288d1;
+    .btn-clear {
+      background-color: #323238;
+      color: #fff;
+      padding: 8px;
+      font-size: 13px;
+      margin-top: 5px;
     }
 
     .console-title {
@@ -130,54 +134,108 @@
 
     <div class="drop-zone" id="dropZone">
       <input type="file" id="fileInput" accept=".txt,.lua" style="display: none;" multiple>
-      <p>📁 Haz clic aquí o arrastra tu archivo (.lua / .txt)</p>
+      <p id="dropText">📁 Haz clic aquí o arrastra tus archivos (.lua / .txt)</p>
     </div>
 
-    <p style="text-align: center; color: #7c7c8a;">— O pega tu script abajo —</p>
+    <button class="btn btn-clear" id="clearFilesBtn" style="display: none;">🗑️ Vaciar lista de archivos</button>
+
+    <p style="text-align: center; color: #7c7c8a; margin-top: 5px;">— O pega tu script abajo —</p>
 
     <textarea id="scriptInput" placeholder="print('Script de prueba')"></textarea>
 
     <button class="btn btn-green" id="scanBtn">Escanear y Generar RAW</button>
-    <button class="btn btn-blue" id="downloadBtn" style="display: none;">Descargar Lista de URLs (.txt)</button>
 
     <div class="console-title">Consola de Análisis:</div>
-    <div class="console-box" id="consoleOutput">Esperando archivo o script para escanear...</div>
+    <div class="console-box" id="consoleOutput">Esperando archivos o script para escanear...</div>
   </div>
 
   <script>
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
+    const dropText = document.getElementById('dropText');
     const scriptInput = document.getElementById('scriptInput');
     const scanBtn = document.getElementById('scanBtn');
+    const clearFilesBtn = document.getElementById('clearFilesBtn');
     const consoleOutput = document.getElementById('consoleOutput');
+
+    // Arreglo global para acumular archivos
+    let accumulatedFiles = [];
 
     dropZone.addEventListener('click', () => fileInput.click());
 
+    // Agregar nuevos archivos seleccionados
     fileInput.addEventListener('change', () => {
       if (fileInput.files.length > 0) {
-        dropZone.querySelector('p').innerText = `📄 ${fileInput.files.length} archivo(s) seleccionado(s)`;
+        for (const file of fileInput.files) {
+          accumulatedFiles.push(file);
+        }
+        actualizarInterfazArchivos();
+        fileInput.value = ''; // Resetear input para permitir elegir el mismo archivo de nuevo
       }
     });
 
-    scanBtn.addEventListener('click', async () => {
-      let content = '';
-      let filename = 'script.txt';
-
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        filename = file.name;
-        content = await file.text();
-      } else {
-        content = scriptInput.value.trim();
+    // Soporte para Drag & Drop (arrastrar y soltar)
+    dropZone.addEventListener('dragover', (e) => e.preventDefault());
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length > 0) {
+        for (const file of e.dataTransfer.files) {
+          accumulatedFiles.push(file);
+        }
+        actualizarInterfazArchivos();
       }
+    });
 
-      if (!content) {
-        consoleOutput.innerHTML = '<span style="color: #ff5252;">⚠️ Por favor pega un script o sube un archivo primero.</span>';
+    // Botón para limpiar los archivos seleccionados
+    clearFilesBtn.addEventListener('click', () => {
+      accumulatedFiles = [];
+      actualizarInterfazArchivos();
+      consoleOutput.innerText = 'Lista de archivos vaciada.';
+    });
+
+    function actualizarInterfazArchivos() {
+      const total = accumulatedFiles.length;
+      if (total > 0) {
+        dropText.innerText = `📄 ${total} archivo(s) seleccionado(s) en total`;
+        clearFilesBtn.style.display = 'block';
+      } else {
+        dropText.innerText = '📁 Haz clic aquí o arrastra tus archivos (.lua / .txt)';
+        clearFilesBtn.style.display = 'none';
+      }
+    }
+
+    // Procesar y escanear todos los archivos acumulados
+    scanBtn.addEventListener('click', async () => {
+      if (accumulatedFiles.length === 0 && !scriptInput.value.trim()) {
+        consoleOutput.innerHTML = '<span style="color: #ff5252;">⚠️ Por favor pega un script o sube al menos un archivo.</span>';
         return;
       }
 
-      consoleOutput.innerText = 'Iniciando análisis anti-stealer...\nAnalizando 1 archivo...\n';
+      consoleOutput.innerText = 'Iniciando análisis anti-stealer...\n\n';
+      let logHtml = '';
 
+      // 1. Analizar archivos acumulados
+      if (accumulatedFiles.length > 0) {
+        for (let i = 0; i < accumulatedFiles.length; i++) {
+          const file = accumulatedFiles[i];
+          const content = await file.text();
+          
+          logHtml += await escanearScriptServidor(content, file.name, i + 1, accumulatedFiles.length);
+        }
+      }
+
+      // 2. Analizar texto pegado en la caja si existe
+      const textoPegado = scriptInput.value.trim();
+      if (textoPegado) {
+        logHtml += await escanearScriptServidor(textoPegado, 'script_pegado.txt', 1, 1);
+      }
+
+      logHtml += `\n¡Análisis completado!`;
+      consoleOutput.innerHTML = logHtml;
+    });
+
+    // Función auxiliar para enviar petición individual al servidor
+    async function escanearScriptServidor(content, filename, actual, total) {
       try {
         const response = await fetch('/api/upload', {
           method: 'POST',
@@ -188,30 +246,27 @@
         const data = await response.json();
 
         if (response.ok) {
-          let logHtml = `[OK 1/1] ${data.filename} -> <a href="${data.raw_url}" target="_blank" style="color: #29b6f6;">${data.raw_url}</a>\n\n`;
+          let resultado = `[OK ${actual}/${total}] ${data.filename} -> <a href="${data.raw_url}" target="_blank" style="color: #29b6f6;">${data.raw_url}</a>\n`;
 
           if (data.seguridad && data.seguridad.esPeligroso) {
-            logHtml += `<span style="color: #ff5252; font-weight: bold;">🚨 PELIGRO DETECTADO EN ${data.filename}:</span>\n`;
+            resultado += `<span style="color: #ff5252; font-weight: bold;">🚨 PELIGRO DETECTADO EN ${data.filename}:</span>\n`;
 
             data.seguridad.detalles.forEach(item => {
-              logHtml += `<span class="alert-line">- ${item.mensaje}</span>`;
-              logHtml += `<span class="code-snippet">  📌 Código: ${escapeHtml(item.linea)}</span>\n`;
+              resultado += `<span class="alert-line">- ${item.mensaje}</span>`;
+              resultado += `<span class="code-snippet">  📌 Código: ${escapeHtml(item.linea)}</span>\n`;
             });
           } else {
-            logHtml += `<span style="color: #00e676; font-weight: bold;">✅ Script Seguro: No se encontraron amenazas de Auto-Trade ni scripts cerrados.</span>\n`;
+            resultado += `<span style="color: #00e676; font-weight: bold;">✅ Script Seguro: No se encontraron amenazas.</span>\n`;
           }
 
-          logHtml += `\n¡Análisis completado!`;
-          consoleOutput.innerHTML = logHtml;
-
+          return resultado + '\n';
         } else {
-          consoleOutput.innerHTML = `<span style="color: #ff5252;">❌ Error: ${data.error || 'No se pudo procesar'}</span>`;
+          return `<span style="color: #ff5252;">❌ Error en ${filename}: ${data.error || 'No se pudo procesar'}</span>\n\n`;
         }
-
       } catch (err) {
-        consoleOutput.innerHTML = `<span style="color: #ff5252;">❌ Error de conexión con el servidor.</span>`;
+        return `<span style="color: #ff5252;">❌ Error de conexión al escanear ${filename}.</span>\n\n`;
       }
-    });
+    }
 
     function escapeHtml(text) {
       return text
@@ -224,4 +279,3 @@
   </script>
 </body>
 </html>
-
