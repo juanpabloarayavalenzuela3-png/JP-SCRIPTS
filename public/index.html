@@ -1,143 +1,16 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Convertidor y Anti-Stealer RAW para Delta</title>
-  <style>
-    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; max-width: 850px; margin: auto; }
-    h2 { color: #00ff66; margin-bottom: 5px; }
-    p.desc { color: #aaa; font-size: 14px; margin-bottom: 20px; }
-    .file-box { border: 2px dashed #00ff66; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; background: #1a1a1a; }
-    input[type="file"] { display: none; }
-    .custom-file-upload { background: #222; color: #00ff66; padding: 12px 20px; border: 1px solid #00ff66; border-radius: 6px; display: inline-block; cursor: pointer; font-weight: bold; }
-    textarea { width: 100%; height: 120px; background: #222; color: #00ff66; border: 1px solid #444; padding: 10px; box-sizing: border-box; font-family: monospace; border-radius: 6px; margin-bottom: 10px; }
-    button { width: 100%; background: #00ff66; color: #000; font-weight: bold; padding: 14px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
-    button:disabled { background: #555; color: #888; cursor: not-allowed; }
-    .status { color: #00ff66; font-size: 14px; margin-top: 8px; font-weight: bold; }
-    #log { width: 100%; height: 260px; background: #151515; color: #00ff66; border: 1px solid #333; padding: 12px; font-family: monospace; font-size: 12px; box-sizing: border-box; border-radius: 6px; margin-top: 15px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
-    .btn-download { background: #0088ff; color: #fff; margin-top: 10px; display: none; }
-  </style>
-</head>
-<body>
-  <h2>Detector Anti-Stealer y Convertidor RAW</h2>
-  <p class="desc">Sube tus scripts para verificar que no contengan sistemas de tradeo automático o robo de objetos.</p>
+if (data.seguridad.esPeligroso) {
+  let htmlAlertas = "<h3>⚠️ Amenazas Detectadas:</h3>";
+  
+  data.seguridad.detalles.forEach(alerta => {
+    htmlAlertas += `
+      <div style="background: #2a1515; border-left: 4px solid #ff4444; padding: 10px; margin-bottom: 8px;">
+        <p style="margin: 0; color: #ff8888;">${alerta.mensaje}</p>
+        <code style="background: #150a0a; color: #ffcccc; padding: 2px 6px; display: block; margin-top: 5px;">
+          ${alerta.linea}
+        </code>
+      </div>
+    `;
+  });
 
-  <div class="file-box">
-    <span>📁 Selecciona uno o <b>múltiples archivos</b> (.lua / .txt):</span><br><br>
-    <label for="file-upload" class="custom-file-upload">
-      Seleccionar Archivo(s)
-    </label>
-    <input id="file-upload" type="file" accept=".lua,.txt" multiple onchange="cargarArchivos(this)"/>
-    <div id="file-count" class="status">Sin archivos seleccionados</div>
-  </div>
-
-  <p style="text-align: center; color: #666;">— O pega un script único abajo —</p>
-
-  <textarea id="single-code" placeholder="print('Script de prueba')"></textarea>
-
-  <button id="btn-process" onclick="procesar()">Escanear y Generar RAW</button>
-  <button id="btn-download" class="btn-download" onclick="descargarLista()">Descargar Lista de URLs (.txt)</button>
-
-  <h3>Consola de Análisis:</h3>
-  <div id="log">Esperando acción...</div>
-
-  <script>
-    let archivosSeleccionados = [];
-    let resultados = [];
-
-    function cargarArchivos(input) {
-      archivosSeleccionados = Array.from(input.files);
-      document.getElementById('file-count').innerText = `${archivosSeleccionados.length} archivo(s) seleccionado(s)`;
-    }
-
-    function addLog(text) {
-      const log = document.getElementById('log');
-      log.innerText += "\n" + text;
-      log.scrollTop = log.scrollHeight;
-    }
-
-    async function procesar() {
-      const singleCode = document.getElementById('single-code').value.trim();
-      const btn = document.getElementById('btn-process');
-      const btnDl = document.getElementById('btn-download');
-      
-      resultados = [];
-      document.getElementById('log').innerText = "Iniciando análisis anti-stealer...";
-      btnDl.style.display = "none";
-
-      if (archivosSeleccionados.length === 0 && !singleCode) {
-        alert("Por favor selecciona archivos o pega un script.");
-        return;
-      }
-
-      btn.disabled = true;
-
-      if (archivosSeleccionados.length > 0) {
-        addLog(`Analizando ${archivosSeleccionados.length} archivos...`);
-        for (let i = 0; i < archivosSeleccionados.length; i++) {
-          const file = archivosSeleccionados[i];
-          try {
-            const content = await file.text();
-            const res = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ source: content, filename: file.name })
-            });
-            const data = await res.json();
-            if (data.raw_url) {
-              let report = `[OK ${i+1}/${archivosSeleccionados.length}] ${file.name} -> ${data.raw_url}`;
-              if (data.seguridad && data.seguridad.esPeligroso) {
-                report += `\n   🚨 PELIGRO DETECTADO EN ${file.name}:\n   ` + data.seguridad.detalles.join("\n   ");
-              }
-              resultados.push(`[${file.name}] -> loadstring(game:HttpGet("${data.raw_url}"))()`);
-              addLog(report);
-            } else {
-              addLog(`[ERROR ${i+1}/${archivosSeleccionados.length}] ${file.name}: ${data.error}`);
-            }
-          } catch (e) {
-            addLog(`[ERROR ${i+1}/${archivosSeleccionados.length}] ${file.name}: Fallo de lectura`);
-          }
-        }
-      } else if (singleCode) {
-        try {
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ source: singleCode, filename: 'ScriptPegado.lua' })
-          });
-          const data = await res.json();
-          if (data.raw_url) {
-            const item = `loadstring(game:HttpGet("${data.raw_url}"))()`;
-            resultados.push(item);
-            addLog(`[OK] Enlace generado:\n${item}`);
-
-            if (data.seguridad && data.seguridad.esPeligroso) {
-              addLog("\n🚨 PELIGRO DETECTADO EN EL SCRIPT:\n" + data.seguridad.detalles.join("\n"));
-              alert("🚨 ¡CUIDADO! SCRIPT DE ROBO / AUTO-TRADE DETECTADO:\n\n" + data.seguridad.detalles.join("\n"));
-            }
-          } else {
-            addLog(`[ERROR]: ${data.error}`);
-          }
-        } catch (e) {
-          addLog(`[ERROR]: Fallo de conexión`);
-        }
-      }
-
-      btn.disabled = false;
-      if (resultados.length > 0) {
-        btnDl.style.display = "block";
-        addLog("\n¡Análisis completado!");
-      }
-    }
-
-    function descargarLista() {
-      const blob = new Blob([resultados.join("\n")], { type: "text/plain;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "Lista_Scripts_RAW_Delta.txt";
-      a.click();
-    }
-  </script>
-</body>
-</html>
+  document.getElementById('contenedor-alertas').innerHTML = htmlAlertas;
+}
