@@ -13,42 +13,33 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding: Cambiar Marca a JP SCRIPTS y reemplazar links de Discord
+// 1. Rebranding: Cambiar Marca a JP SCRIPTS y enlaces de Discord
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // Reemplazar enlaces de invitación de Discord por el tuyo
+  // Reemplazar cualquier invitacion de Discord por la tuya
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
-  modifiedCode = modifiedCode.replace(discordRegex, 'discord.gg/MD6aTg6Hjw');
+  modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar títulos de interfaz y ventanas por "JP SCRIPTS"
+  // Reemplazar titulos de interfaz y ventanas por "JP SCRIPTS"
   modifiedCode = modifiedCode.replace(/(\b(Title|Name|WindowName|HubName)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar textos en la inicialización de librerías UI
+  // Reemplazar textos en la inicializacion de librerias UI
   modifiedCode = modifiedCode.replace(/(:(MakeWindow|CreateWindow|CreateLib|NewWindow|AddWindow)\s*\(\s*\{?\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
 }
 
-// 2. Escáner Ultra-Sensible: Anti-Stealer, Webhooks, Trampas e Inmovilizadores
+// 2. Escaner de Seguridad
 function analizarSeguridad(code) {
   const alertas = [];
   const lines = code.split(/\r?\n/);
-
-  // Palabras asociadas a robo / transferencias / máquinas
-  const palabrasRobo = [
-    'trade', 'traderequest', 'accepttrade', 'confirmtrade', 
-    'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 
-    'dropitem', 'sendpets', 'bankdeposit', 'stealloot',
-    'machine', 'fuse', 'deposit', 'pawn', 'vault', 'inventory',
-    'brainrot', 'steal', 'claim', 'give', 'offer', 'swap', 'moreira'
-  ];
+  const palabrasRobo = ['trade', 'traderequest', 'accepttrade', 'confirmtrade', 'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 'dropitem', 'sendpets', 'bankdeposit', 'stealloot', 'machine', 'fuse', 'deposit', 'pawn', 'vault', 'inventory', 'brainrot', 'steal', 'claim', 'give', 'offer', 'swap', 'moreira'];
 
   lines.forEach((lineText, idx) => {
     const numLinea = idx + 1;
     const cleanLine = lineText.toLowerCase();
 
-    // A. DETECCIÓN DE WEBHOOKS Y EXFILTRACIÓN HTTP
     const esWebhookVar = /webhook/i.test(lineText);
     const esDiscordUrl = /discord\.com\/api/i.test(lineText) || /discordapp\.com\/api/i.test(lineText);
     const esEnvioHttp = /httpService|postasync|getasync|request\s*\(/i.test(lineText);
@@ -67,7 +58,6 @@ function analizarSeguridad(code) {
       });
     }
 
-    // B. DETECCIÓN DE TRAMPAS Y CONGELAMIENTO (TRAP / FREEZE / STRIP INVENTORY)
     const congelaJugador = /walkspeed\s*=\s*0|jumppower\s*=\s*0|anchored\s*=\s*true/i.test(lineText);
     const destruyeItems = /:destroy\s*\(\s*\)/i.test(lineText) && (cleanLine.includes('tool') || cleanLine.includes('backpack'));
 
@@ -79,7 +69,6 @@ function analizarSeguridad(code) {
       });
     }
 
-    // C. DETECCIÓN DE AUTO-TRADE / EVENTOS DE REMOTO
     if (/:(FireServer|InvokeServer)\s*\(/i.test(lineText)) {
       const coincidePalabra = palabrasRobo.some(p => cleanLine.includes(p));
       if (coincidePalabra) {
@@ -91,7 +80,6 @@ function analizarSeguridad(code) {
       }
     }
 
-    // D. DETECCIÓN DE CÓDIGO CERRADO (LOADSTRING)
     if (/loadstring\s*\(/i.test(lineText)) {
       alertas.push({
         tipo: 'SCRIPT CERRADO',
@@ -107,7 +95,7 @@ function analizarSeguridad(code) {
   };
 }
 
-// Endpoint para recibir y procesar scripts
+// Endpoint de subida
 app.post('/api/upload', (req, res) => {
   let source = '';
   let filename = 'script';
@@ -123,13 +111,9 @@ app.post('/api/upload', (req, res) => {
     return res.status(400).json({ error: 'El script está vacío o es inválido' });
   }
 
-  // Rebranding
   const codePersonalizado = personalizarScript(source);
-
-  // Análisis
   const analist = analizarSeguridad(codePersonalizado);
 
-  // Guardar archivo
   const id = Math.random().toString(36).substring(2, 10);
   const filePath = path.join(SCRIPTS_DIR, `${id}.txt`);
 
@@ -143,6 +127,7 @@ app.post('/api/upload', (req, res) => {
       id: id,
       filename: filename,
       raw_url: `${protocol}://${host}/raw/${id}`,
+      loadstring: `loadstring(game:HttpGet("${protocol}://${host}/raw/${id}"))()`,
       seguridad: analist
     });
   } catch (err) {
@@ -151,7 +136,7 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
-// Endpoint RAW directo
+// Endpoint RAW
 app.get('/raw/:id', (req, res) => {
   const scriptId = req.params.id.replace(/[^a-z0-9]/gi, '');
   const filePath = path.join(SCRIPTS_DIR, `${scriptId}.txt`);
