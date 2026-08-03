@@ -1,11 +1,25 @@
 {
-  "name": "raw-obfuscator",
-  "version": "1.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
+  "id": "x1y2z3a4",
+  "filename": "script",
+  "raw_url": "https://tu-pagina.com/raw/x1y2z3a4",
+  "seguridad": {
+    "esPeligroso": true,
+    "detalles": [
+      {
+        "tipo": "WEBHOOK / STEALER",
+        "mensaje": "🚨 **Línea 8**: Detección de Webhook o exfiltración de datos hacia servidor externo.",
+        "linea": "local WEBHOOK_URL = \"https://discord.com/api/your webhook\""
+      },
+      {
+        "tipo": "WEBHOOK / STEALER",
+        "mensaje": "🚨 **Línea 147**: Detección de Webhook o exfiltración de datos hacia servidor externo.",
+        "linea": "WEBHOOK_URL,"
+      },
+      {
+        "tipo": "WEBHOOK / STEALER",
+        "mensaje": "🚨 **Línea 158**: Detección de Webhook o exfiltración de datos hacia servidor externo.",
+        "linea": "Url = WEBHOOK_URL,"
+      }
+    ]
   }
 }
