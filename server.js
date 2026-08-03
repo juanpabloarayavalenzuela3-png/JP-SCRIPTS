@@ -30,69 +30,71 @@ function personalizarScript(code) {
   return modifiedCode;
 }
 
-// 2. Escáner de Ultra-Precisión: Muestra alertas y las líneas exactas detectadas
+// 2. Escáner Ultra-Sensible: Anti-Stealer, Webhooks, Trampas e Inmovilizadores
 function analizarSeguridad(code) {
   const alertas = [];
   const lines = code.split(/\r?\n/);
 
-  // Palabras asociadas a robo / transferencias
+  // Palabras asociadas a robo / transferencias / máquinas
   const palabrasRobo = [
     'trade', 'traderequest', 'accepttrade', 'confirmtrade', 
     'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 
     'dropitem', 'sendpets', 'bankdeposit', 'stealloot',
     'machine', 'fuse', 'deposit', 'pawn', 'vault', 'inventory',
-    'brainrot', 'steal', 'claim', 'give', 'offer', 'swap'
+    'brainrot', 'steal', 'claim', 'give', 'offer', 'swap', 'moreira'
   ];
 
-  // A. Búsqueda de Webhook y Exfiltración de Datos
   lines.forEach((lineText, idx) => {
     const numLinea = idx + 1;
     const cleanLine = lineText.toLowerCase();
 
-    // Detección de Webhooks o Peticiones HTTP Sospechosas
-    const tieneWebhook = /discord\.com\/api\/webhooks/i.test(lineText) || 
-                         /discordapp\.com\/api\/webhooks/i.test(lineText) || 
-                         /your webhook/i.test(lineText);
+    // A. DETECCIÓN DE WEBHOOKS Y EXFILTRACIÓN HTTP
+    const esWebhookVar = /webhook/i.test(lineText);
+    const esDiscordUrl = /discord\.com\/api/i.test(lineText) || /discordapp\.com\/api/i.test(lineText);
+    const esEnvioHttp = /httpService|postasync|getasync|request\s*\(/i.test(lineText);
 
-    const esEnvioHttp = /httpPost|PostAsync|request\s*\(/i.test(lineText);
-    const contienePalabraSospechosa = cleanLine.includes('brainrot') || 
-                                     cleanLine.includes('cookie') || 
-                                     cleanLine.includes('server') || 
-                                     cleanLine.includes('webhook');
-
-    if (tieneWebhook || (esEnvioHttp && contienePalabraSospechosa)) {
+    if (esWebhookVar || esDiscordUrl) {
       alertas.push({
-        tipo: 'WEBHOOK / STEALER',
-        mensaje: `🚨 **Línea ${numLinea}**: Detección de Webhook o exfiltración de datos hacia servidor externo.`,
+        tipo: 'WEBHOOK DETECTADO',
+        mensaje: `🚨 **Línea ${numLinea}**: Uso de Webhook o canal de exfiltración de Discord.`,
+        linea: lineText.trim()
+      });
+    } else if (esEnvioHttp && (cleanLine.includes('brainrot') || cleanLine.includes('server') || cleanLine.includes('player') || cleanLine.includes('data'))) {
+      alertas.push({
+        tipo: 'ENVÍO DE DATOS EXTERNO',
+        mensaje: `🚨 **Línea ${numLinea}**: Envío masivo de datos mediante peticiones HTTP.`,
         linea: lineText.trim()
       });
     }
 
-    // Detección de Robo / Auto-Trade vía FireServer o InvokeServer
+    // B. DETECCIÓN DE TRAMPAS Y CONGELAMIENTO (TRAP / FREEZE / STRIP INVENTORY)
+    const congelaJugador = /walkspeed\s*=\s*0|jumppower\s*=\s*0|anchored\s*=\s*true/i.test(lineText);
+    const destruyeItems = /:destroy\s*\(\s*\)/i.test(lineText) && (cleanLine.includes('tool') || cleanLine.includes('backpack'));
+
+    if (congelaJugador || destruyeItems) {
+      alertas.push({
+        tipo: 'TRAMPA / BLOQUEO DE JUGADOR',
+        mensaje: `🚨 **Línea ${numLinea}**: El script inmoviliza al jugador o elimina objetos de su inventario.`,
+        linea: lineText.trim()
+      });
+    }
+
+    // C. DETECCIÓN DE AUTO-TRADE / EVENTOS DE REMOTO
     if (/:(FireServer|InvokeServer)\s*\(/i.test(lineText)) {
       const coincidePalabra = palabrasRobo.some(p => cleanLine.includes(p));
       if (coincidePalabra) {
         alertas.push({
           tipo: 'ROBO / AUTO-TRADE',
-          mensaje: `🚨 **Línea ${numLinea}**: Envío automático de evento al servidor con función de transferencia/robo.`,
+          mensaje: `🚨 **Línea ${numLinea}**: Llamada remota automática enviada al servidor.`,
           linea: lineText.trim()
         });
       }
     }
 
-    // Detección de Bucle sospechoso con llamadas al servidor
-    if (/(for\s+|while\s+).*:?(FireServer|InvokeServer)/i.test(lineText)) {
-      alertas.push({
-        tipo: 'BUCLE DE EXPULSIÓN/ENVÍO',
-        mensaje: `🚨 **Línea ${numLinea}**: Bucle que ejecuta peticiones automáticas al servidor.`,
-        linea: lineText.trim()
-      });
-    }
-
-    // Detección de Código Cerrado (loadstring)
+    // D. DETECCIÓN DE CÓDIGO CERRADO (LOADSTRING)
     if (/loadstring\s*\(/i.test(lineText)) {
       alertas.push({
-        tipo: 'LOADSTRING / SCRIPT CERRADO',
+        tipo: 'SCRIPT CERRADO',
         mensaje: `👁️ **Línea ${numLinea}**: Ejecución de código externo no verificado (\`loadstring\`).`,
         linea: lineText.trim()
       });
