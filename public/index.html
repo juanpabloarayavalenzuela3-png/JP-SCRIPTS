@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Convertidor Masivo RAW para Delta</title>
+  <title>Convertidor y Anti-Stealer RAW para Delta</title>
   <style>
-    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; max-width: 800px; margin: auto; }
+    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; max-width: 850px; margin: auto; }
     h2 { color: #00ff66; margin-bottom: 5px; }
     p.desc { color: #aaa; font-size: 14px; margin-bottom: 20px; }
     .file-box { border: 2px dashed #00ff66; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; background: #1a1a1a; }
@@ -15,13 +15,13 @@
     button { width: 100%; background: #00ff66; color: #000; font-weight: bold; padding: 14px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
     button:disabled { background: #555; color: #888; cursor: not-allowed; }
     .status { color: #00ff66; font-size: 14px; margin-top: 8px; font-weight: bold; }
-    #log { width: 100%; height: 200px; background: #151515; color: #00ff66; border: 1px solid #333; padding: 10px; font-family: monospace; font-size: 12px; box-sizing: border-box; border-radius: 6px; margin-top: 15px; overflow-y: auto; white-space: pre-wrap; }
+    #log { width: 100%; height: 260px; background: #151515; color: #00ff66; border: 1px solid #333; padding: 12px; font-family: monospace; font-size: 12px; box-sizing: border-box; border-radius: 6px; margin-top: 15px; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
     .btn-download { background: #0088ff; color: #fff; margin-top: 10px; display: none; }
   </style>
 </head>
 <body>
-  <h2>Convertidor RAW Masivo</h2>
-  <p class="desc">Sube un archivo o cientos de archivos (.lua / .txt) para obtener tus enlaces RAW de Delta.</p>
+  <h2>Detector Anti-Stealer y Convertidor RAW</h2>
+  <p class="desc">Sube tus scripts para verificar que no contengan sistemas de tradeo automático o robo de objetos.</p>
 
   <div class="file-box">
     <span>📁 Selecciona uno o <b>múltiples archivos</b> (.lua / .txt):</span><br><br>
@@ -36,10 +36,10 @@
 
   <textarea id="single-code" placeholder="print('Script de prueba')"></textarea>
 
-  <button id="btn-process" onclick="procesar()">Procesar y Generar Enlaces RAW</button>
+  <button id="btn-process" onclick="procesar()">Escanear y Generar RAW</button>
   <button id="btn-download" class="btn-download" onclick="descargarLista()">Descargar Lista de URLs (.txt)</button>
 
-  <h3>Consola de Resultados:</h3>
+  <h3>Consola de Análisis:</h3>
   <div id="log">Esperando acción...</div>
 
   <script>
@@ -63,18 +63,18 @@
       const btnDl = document.getElementById('btn-download');
       
       resultados = [];
-      document.getElementById('log').innerText = "Iniciando proceso...";
+      document.getElementById('log').innerText = "Iniciando análisis anti-stealer...";
       btnDl.style.display = "none";
 
       if (archivosSeleccionados.length === 0 && !singleCode) {
-        alert("Por favor selecciona archivos o pega un script en el cuadro de texto.");
+        alert("Por favor selecciona archivos o pega un script.");
         return;
       }
 
       btn.disabled = true;
 
       if (archivosSeleccionados.length > 0) {
-        addLog(`Procesando ${archivosSeleccionados.length} archivos...`);
+        addLog(`Analizando ${archivosSeleccionados.length} archivos...`);
         for (let i = 0; i < archivosSeleccionados.length; i++) {
           const file = archivosSeleccionados[i];
           try {
@@ -86,14 +86,17 @@
             });
             const data = await res.json();
             if (data.raw_url) {
-              const item = `[${file.name}] -> loadstring(game:HttpGet("${data.raw_url}"))()`;
-              resultados.push(item);
-              addLog(`[OK ${i+1}/${archivosSeleccionados.length}] ${file.name} -> ${data.raw_url}`);
+              let report = `[OK ${i+1}/${archivosSeleccionados.length}] ${file.name} -> ${data.raw_url}`;
+              if (data.seguridad && data.seguridad.esPeligroso) {
+                report += `\n   🚨 PELIGRO DETECTADO EN ${file.name}:\n   ` + data.seguridad.detalles.join("\n   ");
+              }
+              resultados.push(`[${file.name}] -> loadstring(game:HttpGet("${data.raw_url}"))()`);
+              addLog(report);
             } else {
               addLog(`[ERROR ${i+1}/${archivosSeleccionados.length}] ${file.name}: ${data.error}`);
             }
           } catch (e) {
-            addLog(`[ERROR ${i+1}/${archivosSeleccionados.length}] ${file.name}: Fallo de red/lectura`);
+            addLog(`[ERROR ${i+1}/${archivosSeleccionados.length}] ${file.name}: Fallo de lectura`);
           }
         }
       } else if (singleCode) {
@@ -108,6 +111,11 @@
             const item = `loadstring(game:HttpGet("${data.raw_url}"))()`;
             resultados.push(item);
             addLog(`[OK] Enlace generado:\n${item}`);
+
+            if (data.seguridad && data.seguridad.esPeligroso) {
+              addLog("\n🚨 PELIGRO DETECTADO EN EL SCRIPT:\n" + data.seguridad.detalles.join("\n"));
+              alert("🚨 ¡CUIDADO! SCRIPT DE ROBO / AUTO-TRADE DETECTADO:\n\n" + data.seguridad.detalles.join("\n"));
+            }
           } else {
             addLog(`[ERROR]: ${data.error}`);
           }
@@ -119,7 +127,7 @@
       btn.disabled = false;
       if (resultados.length > 0) {
         btnDl.style.display = "block";
-        addLog("\n¡Proceso finalizado con éxito!");
+        addLog("\n¡Análisis completado!");
       }
     }
 
