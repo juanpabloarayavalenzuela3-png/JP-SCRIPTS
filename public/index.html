@@ -1,16 +1,227 @@
-if (data.seguridad.esPeligroso) {
-  let htmlAlertas = "<h3>⚠️ Amenazas Detectadas:</h3>";
-  
-  data.seguridad.detalles.forEach(alerta => {
-    htmlAlertas += `
-      <div style="background: #2a1515; border-left: 4px solid #ff4444; padding: 10px; margin-bottom: 8px;">
-        <p style="margin: 0; color: #ff8888;">${alerta.mensaje}</p>
-        <code style="background: #150a0a; color: #ffcccc; padding: 2px 6px; display: block; margin-top: 5px;">
-          ${alerta.linea}
-        </code>
-      </div>
-    `;
-  });
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JP SCRIPTS - Anti-Stealer & Obfuscador</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-  document.getElementById('contenedor-alertas').innerHTML = htmlAlertas;
-}
+    body {
+      background-color: #121214;
+      color: #e1e1e6;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 650px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00e676;
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #00e676;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      background: #1a1a1e;
+      cursor: pointer;
+    }
+
+    textarea {
+      width: 100%;
+      height: 140px;
+      background-color: #202024;
+      border: 1px solid #323238;
+      border-radius: 6px;
+      color: #a8a8b3;
+      padding: 12px;
+      font-family: monospace;
+      resize: vertical;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-green {
+      background-color: #00e676;
+      color: #000;
+    }
+
+    .btn-green:hover {
+      background-color: #00c853;
+    }
+
+    .btn-blue {
+      background-color: #29b6f6;
+      color: #000;
+    }
+
+    .btn-blue:hover {
+      background-color: #0288d1;
+    }
+
+    .console-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    .console-box {
+      background-color: #0d0d0f;
+      border: 1px solid #29292e;
+      border-radius: 6px;
+      padding: 15px;
+      font-family: monospace;
+      color: #00e676;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .alert-line {
+      color: #ff5252;
+      font-weight: bold;
+      display: block;
+      margin-top: 8px;
+    }
+
+    .code-snippet {
+      color: #ffb74d;
+      background: #1e1212;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>JP SCRIPTS - Escáner Anti-Stealer</h1>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".txt,.lua" style="display: none;" multiple>
+      <p>📁 Haz clic aquí o arrastra tu archivo (.lua / .txt)</p>
+    </div>
+
+    <p style="text-align: center; color: #7c7c8a;">— O pega tu script abajo —</p>
+
+    <textarea id="scriptInput" placeholder="print('Script de prueba')"></textarea>
+
+    <button class="btn btn-green" id="scanBtn">Escanear y Generar RAW</button>
+    <button class="btn btn-blue" id="downloadBtn" style="display: none;">Descargar Lista de URLs (.txt)</button>
+
+    <div class="console-title">Consola de Análisis:</div>
+    <div class="console-box" id="consoleOutput">Esperando archivo o script para escanear...</div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const scriptInput = document.getElementById('scriptInput');
+    const scanBtn = document.getElementById('scanBtn');
+    const consoleOutput = document.getElementById('consoleOutput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        dropZone.querySelector('p').innerText = `📄 ${fileInput.files.length} archivo(s) seleccionado(s)`;
+      }
+    });
+
+    scanBtn.addEventListener('click', async () => {
+      let content = '';
+      let filename = 'script.txt';
+
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        filename = file.name;
+        content = await file.text();
+      } else {
+        content = scriptInput.value.trim();
+      }
+
+      if (!content) {
+        consoleOutput.innerHTML = '<span style="color: #ff5252;">⚠️ Por favor pega un script o sube un archivo primero.</span>';
+        return;
+      }
+
+      consoleOutput.innerText = 'Iniciando análisis anti-stealer...\nAnalizando 1 archivo...\n';
+
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: content, filename: filename })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          let logHtml = `[OK 1/1] ${data.filename} -> <a href="${data.raw_url}" target="_blank" style="color: #29b6f6;">${data.raw_url}</a>\n\n`;
+
+          if (data.seguridad && data.seguridad.esPeligroso) {
+            logHtml += `<span style="color: #ff5252; font-weight: bold;">🚨 PELIGRO DETECTADO EN ${data.filename}:</span>\n`;
+
+            data.seguridad.detalles.forEach(item => {
+              logHtml += `<span class="alert-line">- ${item.mensaje}</span>`;
+              logHtml += `<span class="code-snippet">  📌 Código: ${escapeHtml(item.linea)}</span>\n`;
+            });
+          } else {
+            logHtml += `<span style="color: #00e676; font-weight: bold;">✅ Script Seguro: No se encontraron amenazas de Auto-Trade ni scripts cerrados.</span>\n`;
+          }
+
+          logHtml += `\n¡Análisis completado!`;
+          consoleOutput.innerHTML = logHtml;
+
+        } else {
+          consoleOutput.innerHTML = `<span style="color: #ff5252;">❌ Error: ${data.error || 'No se pudo procesar'}</span>`;
+        }
+
+      } catch (err) {
+        consoleOutput.innerHTML = `<span style="color: #ff5252;">❌ Error de conexión con el servidor.</span>`;
+      }
+    });
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
+
