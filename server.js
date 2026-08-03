@@ -30,42 +30,46 @@ function personalizarScript(code) {
   return modifiedCode;
 }
 
-// Escáner especializado en Auto-Trade Stealers y Robo de Objetos
+// Escáner de Ultra-Precisión: Auto-Trade Stealers y Loadstring Internos
 function analizarSeguridad(code) {
   const alertas = [];
-  const cleanCode = code.toLowerCase();
 
-  const remotosRobo = [
-    'trade', 'traderequest', 'accepttrade', 'confirmtrade', 'additem', 
-    'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 'dropitem',
-    'deposit', 'withdraw', 'sendpets', 'bankdeposit'
+  // ==========================================
+  // 1. DETECCIÓN PRECIOSA DE AUTO-TRADE STEALERS
+  // ==========================================
+  // Lista de RemoteEvents/RemoteFunctions comunes de tradeo/regalos en Roblox
+  const remotosTradeo = [
+    'trade', 'traderequest', 'accepttrade', 'confirmtrade', 
+    'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 
+    'dropitem', 'sendpets', 'bankdeposit', 'stealloot'
   ];
 
-  const tieneRemotos = /:(fireserver|invokeserver)\s*\(/i.test(code);
-  const detectaPalabrasTrade = remotosRobo.some(word => cleanCode.includes(word));
+  // Regex para detectar llamadas a servidor: :FireServer(...) o :InvokeServer(...)
+  const llamadoServidorRegex = /:(FireServer|InvokeServer)\s*\(([^)]*)\)/gi;
+  let matchServidor;
 
-  if (tieneRemotos && detectaPalabrasTrade) {
-    alertas.push("🚨 **ALERTA DE AUTO-TRADE / ROBO DE OBJETOS**: El script intenta activar eventos de Trade, Regalo o Gemas.");
+  while ((matchServidor = llamadoServidorRegex.exec(code)) !== null) {
+    const lineaLlamado = matchServidor[0].toLowerCase();
+    const argumentos = matchServidor[2].toLowerCase();
+
+    // Comprobar si el evento o los argumentos invocan funciones de tradeo/regalo
+    const esEventoTrade = remotosTradeo.some(palabra => lineaLlamado.includes(palabra) || argumentos.includes(palabra));
+
+    if (esEventoTrade) {
+      alertas.push("🚨 **ALERTA DE ROBO / AUTO-TRADE**: El script invoca eventos del servidor (`FireServer`/`InvokeServer`) diseñados para transferir, regalar o aceptar intercambios de objetos de forma automática.");
+      break; // Evitamos duplicar la alerta
+    }
   }
 
-  const fuerzaAceptacion = /(accept|confirm|ready).*(fireserver|invokeserver|mousebutton1click)/i.test(code);
-  if (fuerzaAceptacion) {
-    alertas.push("⚠️ **ACEPTACIÓN AUTOMÁTICA**: Detectada lógica para aceptar/confirmar intercambios automáticamente.");
-  }
+  // ==========================================
+  // 2. DETECCIÓN PRECISA DE SCRIPTS CERRADOS (LOADSTRING)
+  // ==========================================
+  // Detecta loadstring, game:HttpGet, cloneref/request o ejecuciones externas anidadas
+  const loadstringRegex = /loadstring\s*\(\s*(game:HttpGet|httpget|request|syn\.request|http_request|cloneref)\s*\(/i;
+  const loadstringGenerico = /loadstring\s*\(/i;
 
-  const paralizaJugador = /walkspeed\s*=\s*0/i.test(code) || /jumppower\s*=\s*0/i.test(code);
-  const ocultaUI = /enabled\s*=\s*false/i.test(code) && (cleanCode.includes('trade') || cleanCode.includes('gui'));
-
-  if (paralizaJugador || ocultaUI) {
-    alertas.push("🔒 **INMOVILIZACIÓN / OCULTAMIENTO**: Intenta congelar a tu personaje o GUI durante el tradeo.");
-  }
-
-  const tieneLoadstring = /loadstring\s*\(\s*(game|httpget|cloneref|request)/i.test(code) || 
-                          /loadstring\s*\(\s*game:httpget/i.test(code) ||
-                          /loadstring\s*\(/i.test(code);
-
-  if (tieneLoadstring) {
-    alertas.push("👁️ **SCRIPT ANIDADO**: Contiene un `loadstring(...)` interno que ejecuta código remoto secundario.");
+  if (loadstringRegex.test(code) || loadstringGenerico.test(code)) {
+    alertas.push("👁️ **SCRIPT CERRADO INTERNO (`loadstring`)**: Contiene código oculto o secundario ejecutado desde una URL externa no verificada.");
   }
 
   return {
@@ -90,10 +94,10 @@ app.post('/api/upload', (req, res) => {
     return res.status(400).json({ error: 'El script está vacío o es inválido' });
   }
 
-  // 1. Aplicar Rebranding
+  // 1. Aplicar Rebranding (Nombre a JP SCRIPTS y Discord actualizado)
   const codePersonalizado = personalizarScript(source);
 
-  // 2. Analizar la seguridad del script
+  // 2. Analizar la seguridad con ultra-precisión
   const analist = analizarSeguridad(codePersonalizado);
 
   // Generar ID único
