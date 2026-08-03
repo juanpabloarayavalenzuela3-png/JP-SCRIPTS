@@ -81,6 +81,15 @@
       background-color: #00c853;
     }
 
+    .btn-blue {
+      background-color: #29b6f6;
+      color: #000;
+    }
+
+    .btn-blue:hover {
+      background-color: #0288d1;
+    }
+
     .btn-clear {
       background-color: #323238;
       color: #fff;
@@ -144,6 +153,7 @@
     <textarea id="scriptInput" placeholder="print('Script de prueba')"></textarea>
 
     <button class="btn btn-green" id="scanBtn">Escanear y Generar RAW</button>
+    <button class="btn btn-blue" id="downloadBtn" style="display: none;">Descargar Lista de URLs (.txt)</button>
 
     <div class="console-title">Consola de Análisis:</div>
     <div class="console-box" id="consoleOutput">Esperando archivos o script para escanear...</div>
@@ -155,26 +165,25 @@
     const dropText = document.getElementById('dropText');
     const scriptInput = document.getElementById('scriptInput');
     const scanBtn = document.getElementById('scanBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
     const clearFilesBtn = document.getElementById('clearFilesBtn');
     const consoleOutput = document.getElementById('consoleOutput');
 
-    // Arreglo global para acumular archivos
     let accumulatedFiles = [];
+    let generatedLoadstrings = [];
 
     dropZone.addEventListener('click', () => fileInput.click());
 
-    // Agregar nuevos archivos seleccionados
     fileInput.addEventListener('change', () => {
       if (fileInput.files.length > 0) {
         for (const file of fileInput.files) {
           accumulatedFiles.push(file);
         }
         actualizarInterfazArchivos();
-        fileInput.value = ''; // Resetear input para permitir elegir el mismo archivo de nuevo
+        fileInput.value = '';
       }
     });
 
-    // Soporte para Drag & Drop (arrastrar y soltar)
     dropZone.addEventListener('dragover', (e) => e.preventDefault());
     dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
@@ -186,10 +195,11 @@
       }
     });
 
-    // Botón para limpiar los archivos seleccionados
     clearFilesBtn.addEventListener('click', () => {
       accumulatedFiles = [];
+      generatedLoadstrings = [];
       actualizarInterfazArchivos();
+      downloadBtn.style.display = 'none';
       consoleOutput.innerText = 'Lista de archivos vaciada.';
     });
 
@@ -204,7 +214,6 @@
       }
     }
 
-    // Procesar y escanear todos los archivos acumulados
     scanBtn.addEventListener('click', async () => {
       if (accumulatedFiles.length === 0 && !scriptInput.value.trim()) {
         consoleOutput.innerHTML = '<span style="color: #ff5252;">⚠️ Por favor pega un script o sube al menos un archivo.</span>';
@@ -213,8 +222,8 @@
 
       consoleOutput.innerText = 'Iniciando análisis anti-stealer...\n\n';
       let logHtml = '';
+      generatedLoadstrings = [];
 
-      // 1. Analizar archivos acumulados
       if (accumulatedFiles.length > 0) {
         for (let i = 0; i < accumulatedFiles.length; i++) {
           const file = accumulatedFiles[i];
@@ -224,7 +233,6 @@
         }
       }
 
-      // 2. Analizar texto pegado en la caja si existe
       const textoPegado = scriptInput.value.trim();
       if (textoPegado) {
         logHtml += await escanearScriptServidor(textoPegado, 'script_pegado.txt', 1, 1);
@@ -232,9 +240,12 @@
 
       logHtml += `\n¡Análisis completado!`;
       consoleOutput.innerHTML = logHtml;
+
+      if (generatedLoadstrings.length > 0) {
+        downloadBtn.style.display = 'block';
+      }
     });
 
-    // Función auxiliar para enviar petición individual al servidor
     async function escanearScriptServidor(content, filename, actual, total) {
       try {
         const response = await fetch('/api/upload', {
@@ -246,6 +257,8 @@
         const data = await response.json();
 
         if (response.ok) {
+          generatedLoadstrings.push(`-- [${data.filename}]\n${data.loadstring}\n`);
+
           let resultado = `[OK ${actual}/${total}] ${data.filename} -> <a href="${data.raw_url}" target="_blank" style="color: #29b6f6;">${data.raw_url}</a>\n`;
 
           if (data.seguridad && data.seguridad.esPeligroso) {
@@ -267,6 +280,21 @@
         return `<span style="color: #ff5252;">❌ Error de conexión al escanear ${filename}.</span>\n\n`;
       }
     }
+
+    // Evento para descargar la lista de loadstrings
+    downloadBtn.addEventListener('click', () => {
+      if (generatedLoadstrings.length === 0) return;
+
+      const blob = new Blob([generatedLoadstrings.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'lista_loadstrings_JP_SCRIPTS.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
 
     function escapeHtml(text) {
       return text
