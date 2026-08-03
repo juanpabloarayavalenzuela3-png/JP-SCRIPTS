@@ -30,41 +30,52 @@ function personalizarScript(code) {
   return modifiedCode;
 }
 
-// Escáner de Ultra-Precisión: Auto-Trade Stealers y Loadstring Internos
+// Escáner de Alta Precisión: Auto-Trade, Robos por Máquina e Inventario, y Loadstring
 function analizarSeguridad(code) {
   const alertas = [];
+  const cleanCode = code.toLowerCase();
 
   // ==========================================
-  // 1. DETECCIÓN PRECIOSA DE AUTO-TRADE STEALERS
+  // 1. DETECCIÓN DE ROBO / AUTO-TRADE / MÁQUINAS AUTOMÁTICAS
   // ==========================================
-  // Lista de RemoteEvents/RemoteFunctions comunes de tradeo/regalos en Roblox
-  const remotosTradeo = [
+  
+  // Palabras clave ampliadas de eventos de robo, intercambio y máquinas
+  const palabrasRobo = [
     'trade', 'traderequest', 'accepttrade', 'confirmtrade', 
     'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 
-    'dropitem', 'sendpets', 'bankdeposit', 'stealloot'
+    'dropitem', 'sendpets', 'bankdeposit', 'stealloot',
+    'machine', 'fuse', 'deposit', 'pawn', 'vault', 'inventory',
+    'brainrot', 'steal', 'claim', 'give', 'offer', 'swap'
   ];
 
-  // Regex para detectar llamadas a servidor: :FireServer(...) o :InvokeServer(...)
+  // Regla A: Petición al servidor con términos de transferencia/máquina/inventario
   const llamadoServidorRegex = /:(FireServer|InvokeServer)\s*\(([^)]*)\)/gi;
   let matchServidor;
+  let detectoRoboDirecto = false;
 
   while ((matchServidor = llamadoServidorRegex.exec(code)) !== null) {
     const lineaLlamado = matchServidor[0].toLowerCase();
     const argumentos = matchServidor[2].toLowerCase();
 
-    // Comprobar si el evento o los argumentos invocan funciones de tradeo/regalo
-    const esEventoTrade = remotosTradeo.some(palabra => lineaLlamado.includes(palabra) || argumentos.includes(palabra));
+    const coincidePalabra = palabrasRobo.some(palabra => lineaLlamado.includes(palabra) || argumentos.includes(palabra));
 
-    if (esEventoTrade) {
-      alertas.push("🚨 **ALERTA DE ROBO / AUTO-TRADE**: El script invoca eventos del servidor (`FireServer`/`InvokeServer`) diseñados para transferir, regalar o aceptar intercambios de objetos de forma automática.");
-      break; // Evitamos duplicar la alerta
+    if (coincidePalabra) {
+      detectoRoboDirecto = true;
+      break;
     }
   }
 
+  // Regla B: Uso de bucles (for/while) para enviar ítems/pets masivamente a un servidor/jugador
+  const envioMasivoEnBucle = /(for\s+|while\s+).*:?(FireServer|InvokeServer)/gi.test(code) ||
+                            /(for\s+.*in\s+.*do).*(machine|deposit|trade|gift|transfer|send)/gi.test(cleanCode);
+
+  if (detectoRoboDirecto || envioMasivoEnBucle) {
+    alertas.push("🚨 **ALERTA DE ROBO / AUTO-TRADE**: El script intenta enviar, regalar o transferir automáticamente tus objetos/pets (vía trade o máquina) a otro jugador o servidor.");
+  }
+
   // ==========================================
-  // 2. DETECCIÓN PRECISA DE SCRIPTS CERRADOS (LOADSTRING)
+  // 2. DETECCIÓN DE SCRIPTS CERRADOS (LOADSTRING)
   // ==========================================
-  // Detecta loadstring, game:HttpGet, cloneref/request o ejecuciones externas anidadas
   const loadstringRegex = /loadstring\s*\(\s*(game:HttpGet|httpget|request|syn\.request|http_request|cloneref)\s*\(/i;
   const loadstringGenerico = /loadstring\s*\(/i;
 
@@ -145,3 +156,4 @@ app.get('/raw/:id', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+
