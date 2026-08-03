@@ -13,33 +13,41 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// Función para reemplazar marca y Discord en el código Lua
+// 1. Rebranding: Cambiar Marca a JP SCRIPTS y reemplazar links de Discord
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // 1. Reemplazar cualquier enlace de Discord por el tuyo
+  // Reemplazar enlaces de invitación de Discord por el tuyo
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'discord.gg/MD6aTg6Hjw');
 
-  // 2. Reemplazar CUALQUIER nombre de ventana/UI (Title, Name, WindowName, HubName) por "JP SCRIPTS"
+  // Reemplazar títulos de interfaz y ventanas por "JP SCRIPTS"
   modifiedCode = modifiedCode.replace(/(\b(Title|Name|WindowName|HubName)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // 3. Reemplazar llamadas a librerías de UI donde el primer texto es el nombre de la interfaz
+  // Reemplazar textos en la inicialización de librerías UI
   modifiedCode = modifiedCode.replace(/(:(MakeWindow|CreateWindow|CreateLib|NewWindow|AddWindow)\s*\(\s*\{?\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
 }
 
-// Escáner de Alta Precisión: Auto-Trade, Robos por Máquina e Inventario, y Loadstring
+// 2. Escáner de Ultra-Precisión: Auto-Trade, Webhook Stealers y Loadstring
 function analizarSeguridad(code) {
   const alertas = [];
   const cleanCode = code.toLowerCase();
 
   // ==========================================
-  // 1. DETECCIÓN DE ROBO / AUTO-TRADE / MÁQUINAS AUTOMÁTICAS
+  // A. DETECCIÓN DE WEBHOOK STEALERS / EXFILTRACIÓN DE DATOS
   // ==========================================
-  
-  // Palabras clave ampliadas de eventos de robo, intercambio y máquinas
+  const tieneWebhook = /discord\.com\/api\/webhooks/i.test(code) || /discordapp\.com\/api\/webhooks/i.test(code) || /your webhook/i.test(code);
+  const envioHttp = /httpPost|PostAsync|request\s*\(/i.test(code);
+
+  if (tieneWebhook || (envioHttp && (cleanCode.includes('brainrot') || cleanCode.includes('cookie') || cleanCode.includes('server')))) {
+    alertas.push("🚨 **ALERTA DE STEALER / WEBHOOK**: El script intenta enviar información de tu servidor, inventario o datos privados a un servidor externo vía Webhook de Discord.");
+  }
+
+  // ==========================================
+  // B. DETECCIÓN DE AUTO-TRADE / MÁQUINAS AUTOMÁTICAS
+  // ==========================================
   const palabrasRobo = [
     'trade', 'traderequest', 'accepttrade', 'confirmtrade', 
     'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 
@@ -48,7 +56,6 @@ function analizarSeguridad(code) {
     'brainrot', 'steal', 'claim', 'give', 'offer', 'swap'
   ];
 
-  // Regla A: Petición al servidor con términos de transferencia/máquina/inventario
   const llamadoServidorRegex = /:(FireServer|InvokeServer)\s*\(([^)]*)\)/gi;
   let matchServidor;
   let detectoRoboDirecto = false;
@@ -65,22 +72,20 @@ function analizarSeguridad(code) {
     }
   }
 
-  // Regla B: Uso de bucles (for/while) para enviar ítems/pets masivamente a un servidor/jugador
-  const envioMasivoEnBucle = /(for\s+|while\s+).*:?(FireServer|InvokeServer)/gi.test(code) ||
-                            /(for\s+.*in\s+.*do).*(machine|deposit|trade|gift|transfer|send)/gi.test(cleanCode);
+  const envioEnBucle = /(for\s+|while\s+).*:?(FireServer|InvokeServer)/gi.test(code) ||
+                        /(for\s+.*in\s+.*do).*(machine|deposit|trade|gift|transfer|send)/gi.test(cleanCode);
 
-  if (detectoRoboDirecto || envioMasivoEnBucle) {
-    alertas.push("🚨 **ALERTA DE ROBO / AUTO-TRADE**: El script intenta enviar, regalar o transferir automáticamente tus objetos/pets (vía trade o máquina) a otro jugador o servidor.");
+  if (detectoRoboDirecto || envioEnBucle) {
+    alertas.push("🚨 **ALERTA DE ROBO / AUTO-TRADE**: El script intenta transferir o regalar tus objetos/pets de forma automática mediante eventos del servidor.");
   }
 
   // ==========================================
-  // 2. DETECCIÓN DE SCRIPTS CERRADOS (LOADSTRING)
+  // C. DETECCIÓN DE CÓDIGO CERRADO / LOADSCRIPT INTERNO
   // ==========================================
-  const loadstringRegex = /loadstring\s*\(\s*(game:HttpGet|httpget|request|syn\.request|http_request|cloneref)\s*\(/i;
-  const loadstringGenerico = /loadstring\s*\(/i;
+  const tieneLoadstring = /loadstring\s*\(/i.test(code);
 
-  if (loadstringRegex.test(code) || loadstringGenerico.test(code)) {
-    alertas.push("👁️ **SCRIPT CERRADO INTERNO (`loadstring`)**: Contiene código oculto o secundario ejecutado desde una URL externa no verificada.");
+  if (tieneLoadstring) {
+    alertas.push("👁️ **SCRIPT CERRADO INTERNO (`loadstring`)**: Ejecuta código secundario no verificado cargado desde una URL remota.");
   }
 
   return {
@@ -89,7 +94,7 @@ function analizarSeguridad(code) {
   };
 }
 
-// Endpoint para guardar un script
+// Endpoint para recibir y procesar scripts
 app.post('/api/upload', (req, res) => {
   let source = '';
   let filename = 'script';
@@ -105,13 +110,13 @@ app.post('/api/upload', (req, res) => {
     return res.status(400).json({ error: 'El script está vacío o es inválido' });
   }
 
-  // 1. Aplicar Rebranding (Nombre a JP SCRIPTS y Discord actualizado)
+  // Rebranding
   const codePersonalizado = personalizarScript(source);
 
-  // 2. Analizar la seguridad con ultra-precisión
+  // Análisis
   const analist = analizarSeguridad(codePersonalizado);
 
-  // Generar ID único
+  // Guardar archivo
   const id = Math.random().toString(36).substring(2, 10);
   const filePath = path.join(SCRIPTS_DIR, `${id}.txt`);
 
@@ -133,7 +138,7 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
-// Endpoint RAW directo para Roblox / Delta
+// Endpoint RAW directo
 app.get('/raw/:id', (req, res) => {
   const scriptId = req.params.id.replace(/[^a-z0-9]/gi, '');
   const filePath = path.join(SCRIPTS_DIR, `${scriptId}.txt`);
@@ -156,4 +161,3 @@ app.get('/raw/:id', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
-
