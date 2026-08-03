@@ -30,24 +30,12 @@ function personalizarScript(code) {
   return modifiedCode;
 }
 
-// 2. Escáner de Ultra-Precisión: Auto-Trade, Webhook Stealers y Loadstring
+// 2. Escáner de Ultra-Precisión: Muestra alertas y las líneas exactas detectadas
 function analizarSeguridad(code) {
   const alertas = [];
-  const cleanCode = code.toLowerCase();
+  const lines = code.split(/\r?\n/);
 
-  // ==========================================
-  // A. DETECCIÓN DE WEBHOOK STEALERS / EXFILTRACIÓN DE DATOS
-  // ==========================================
-  const tieneWebhook = /discord\.com\/api\/webhooks/i.test(code) || /discordapp\.com\/api\/webhooks/i.test(code) || /your webhook/i.test(code);
-  const envioHttp = /httpPost|PostAsync|request\s*\(/i.test(code);
-
-  if (tieneWebhook || (envioHttp && (cleanCode.includes('brainrot') || cleanCode.includes('cookie') || cleanCode.includes('server')))) {
-    alertas.push("🚨 **ALERTA DE STEALER / WEBHOOK**: El script intenta enviar información de tu servidor, inventario o datos privados a un servidor externo vía Webhook de Discord.");
-  }
-
-  // ==========================================
-  // B. DETECCIÓN DE AUTO-TRADE / MÁQUINAS AUTOMÁTICAS
-  // ==========================================
+  // Palabras asociadas a robo / transferencias
   const palabrasRobo = [
     'trade', 'traderequest', 'accepttrade', 'confirmtrade', 
     'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 
@@ -56,37 +44,60 @@ function analizarSeguridad(code) {
     'brainrot', 'steal', 'claim', 'give', 'offer', 'swap'
   ];
 
-  const llamadoServidorRegex = /:(FireServer|InvokeServer)\s*\(([^)]*)\)/gi;
-  let matchServidor;
-  let detectoRoboDirecto = false;
+  // A. Búsqueda de Webhook y Exfiltración de Datos
+  lines.forEach((lineText, idx) => {
+    const numLinea = idx + 1;
+    const cleanLine = lineText.toLowerCase();
 
-  while ((matchServidor = llamadoServidorRegex.exec(code)) !== null) {
-    const lineaLlamado = matchServidor[0].toLowerCase();
-    const argumentos = matchServidor[2].toLowerCase();
+    // Detección de Webhooks o Peticiones HTTP Sospechosas
+    const tieneWebhook = /discord\.com\/api\/webhooks/i.test(lineText) || 
+                         /discordapp\.com\/api\/webhooks/i.test(lineText) || 
+                         /your webhook/i.test(lineText);
 
-    const coincidePalabra = palabrasRobo.some(palabra => lineaLlamado.includes(palabra) || argumentos.includes(palabra));
+    const esEnvioHttp = /httpPost|PostAsync|request\s*\(/i.test(lineText);
+    const contienePalabraSospechosa = cleanLine.includes('brainrot') || 
+                                     cleanLine.includes('cookie') || 
+                                     cleanLine.includes('server') || 
+                                     cleanLine.includes('webhook');
 
-    if (coincidePalabra) {
-      detectoRoboDirecto = true;
-      break;
+    if (tieneWebhook || (esEnvioHttp && contienePalabraSospechosa)) {
+      alertas.push({
+        tipo: 'WEBHOOK / STEALER',
+        mensaje: `🚨 **Línea ${numLinea}**: Detección de Webhook o exfiltración de datos hacia servidor externo.`,
+        linea: lineText.trim()
+      });
     }
-  }
 
-  const envioEnBucle = /(for\s+|while\s+).*:?(FireServer|InvokeServer)/gi.test(code) ||
-                        /(for\s+.*in\s+.*do).*(machine|deposit|trade|gift|transfer|send)/gi.test(cleanCode);
+    // Detección de Robo / Auto-Trade vía FireServer o InvokeServer
+    if (/:(FireServer|InvokeServer)\s*\(/i.test(lineText)) {
+      const coincidePalabra = palabrasRobo.some(p => cleanLine.includes(p));
+      if (coincidePalabra) {
+        alertas.push({
+          tipo: 'ROBO / AUTO-TRADE',
+          mensaje: `🚨 **Línea ${numLinea}**: Envío automático de evento al servidor con función de transferencia/robo.`,
+          linea: lineText.trim()
+        });
+      }
+    }
 
-  if (detectoRoboDirecto || envioEnBucle) {
-    alertas.push("🚨 **ALERTA DE ROBO / AUTO-TRADE**: El script intenta transferir o regalar tus objetos/pets de forma automática mediante eventos del servidor.");
-  }
+    // Detección de Bucle sospechoso con llamadas al servidor
+    if (/(for\s+|while\s+).*:?(FireServer|InvokeServer)/i.test(lineText)) {
+      alertas.push({
+        tipo: 'BUCLE DE EXPULSIÓN/ENVÍO',
+        mensaje: `🚨 **Línea ${numLinea}**: Bucle que ejecuta peticiones automáticas al servidor.`,
+        linea: lineText.trim()
+      });
+    }
 
-  // ==========================================
-  // C. DETECCIÓN DE CÓDIGO CERRADO / LOADSCRIPT INTERNO
-  // ==========================================
-  const tieneLoadstring = /loadstring\s*\(/i.test(code);
-
-  if (tieneLoadstring) {
-    alertas.push("👁️ **SCRIPT CERRADO INTERNO (`loadstring`)**: Ejecuta código secundario no verificado cargado desde una URL remota.");
-  }
+    // Detección de Código Cerrado (loadstring)
+    if (/loadstring\s*\(/i.test(lineText)) {
+      alertas.push({
+        tipo: 'LOADSTRING / SCRIPT CERRADO',
+        mensaje: `👁️ **Línea ${numLinea}**: Ejecución de código externo no verificado (\`loadstring\`).`,
+        linea: lineText.trim()
+      });
+    }
+  });
 
   return {
     esPeligroso: alertas.length > 0,
