@@ -13,7 +13,7 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Seguro (Preserva la lógica interna del script)
+// 1. Rebranding Quirúrgico (Preserva variables internas y cambia títulos visuales)
 function personalizarScript(code) {
   let modifiedCode = code;
 
@@ -21,14 +21,14 @@ function personalizarScript(code) {
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar TÍTULOS de UI explícitos
+  // Reemplazar el nombre en pantalla específico "Blossom Redeemer"
+  modifiedCode = modifiedCode.replace(/Blossom\s*Redeemer/gi, 'JP SCRIPTS');
+
+  // Reemplazar títulos explícitos en la interfaz
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar llamados a creación de ventanas
+  // Reemplazar nombres de ventanas en librerías UI
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
-
-  // Reemplazar nombre en MakeWindow
-  modifiedCode = modifiedCode.replace(/(MakeWindow\s*\(\s*\{[^}]*?\bName\s*=\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$2');
 
   return modifiedCode;
 }
