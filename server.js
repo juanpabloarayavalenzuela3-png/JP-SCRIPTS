@@ -13,21 +13,27 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Quirúrgico (Preserva variables internas y cambia títulos visuales)
+// 1. Rebranding Universal
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // Reemplazar enlaces de Discord
+  // Reemplazar invitaciones de Discord
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar el nombre en pantalla específico "Blossom Redeemer"
+  // Nombres específicos
   modifiedCode = modifiedCode.replace(/Blossom\s*Redeemer/gi, 'JP SCRIPTS');
+  modifiedCode = modifiedCode.replace(/Lithium\s*Paste/gi, 'JP SCRIPTS');
+  modifiedCode = modifiedCode.replace(/Gamma\s*Hub/gi, 'JP SCRIPTS');
+  modifiedCode = modifiedCode.replace(/Amir\s*Hub/gi, 'JP SCRIPTS');
 
-  // Reemplazar títulos explícitos en la interfaz
+  // Patrón general para cualquier otro HUB / Paste entre comillas
+  modifiedCode = modifiedCode.replace(/(["'])[A-Za-z0-9_\s]+?\s+(Hub|Paste|Redeemer|Script)(["'])/gi, '$1JP SCRIPTS$3');
+
+  // Títulos explícitos de la interfaz
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar nombres de ventanas en librerías UI
+  // Creación de ventanas en librerías de Roblox
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
