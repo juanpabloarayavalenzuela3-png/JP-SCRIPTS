@@ -13,25 +13,22 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Aggresive: Cambia marcas y Discord a JP SCRIPTS
+// 1. Rebranding Seguro (Preserva la lógica interna del script)
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // Reemplazar invitaciones de Discord
+  // Reemplazar enlaces de Discord
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar títulos en propiedades de UI
-  modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|Name|Header)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
+  // Reemplazar TÍTULOS de UI explícitos
+  modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar llamados de funciones en librerías UI
-  modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow|Init)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
+  // Reemplazar llamados a creación de ventanas
+  modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar asignaciones a TextLabels (.Text = "...")
-  modifiedCode = modifiedCode.replace(/(\.Text\s*=\s*["'])[^"']+(["'])/gi, (match, p1, p2) => {
-    if (match.includes('http') || match.includes('discord.gg')) return match;
-    return `${p1}JP SCRIPTS${p2}`;
-  });
+  // Reemplazar nombre en MakeWindow
+  modifiedCode = modifiedCode.replace(/(MakeWindow\s*\(\s*\{[^}]*?\bName\s*=\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$2');
 
   return modifiedCode;
 }
