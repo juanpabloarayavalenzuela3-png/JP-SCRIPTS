@@ -13,24 +13,24 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding: Cambiar Marca a JP SCRIPTS y enlaces de Discord
+// 1. Rebranding: Cambiar Marca a JP SCRIPTS y reemplazar links de Discord
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // Reemplazar cualquier invitacion de Discord por la tuya
+  // Reemplazar cualquier invitación de Discord por la tuya
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar titulos de interfaz y ventanas por "JP SCRIPTS"
+  // Reemplazar títulos de interfaz y ventanas por "JP SCRIPTS"
   modifiedCode = modifiedCode.replace(/(\b(Title|Name|WindowName|HubName)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar textos en la inicializacion de librerias UI
+  // Reemplazar textos en la inicialización de librerías UI
   modifiedCode = modifiedCode.replace(/(:(MakeWindow|CreateWindow|CreateLib|NewWindow|AddWindow)\s*\(\s*\{?\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
 }
 
-// 2. Escaner de Seguridad
+// 2. Escáner de Seguridad (Anti-Stealer y Trampas)
 function analizarSeguridad(code) {
   const alertas = [];
   const lines = code.split(/\r?\n/);
@@ -120,8 +120,9 @@ app.post('/api/upload', (req, res) => {
   try {
     fs.writeFileSync(filePath, codePersonalizado, 'utf-8');
 
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    // Forzar siempre protocolo HTTPS si estás en Render u otro Hosting con SSL
     const host = req.get('host');
+    const protocol = 'https';
 
     res.json({
       id: id,
@@ -136,23 +137,25 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
-// Endpoint RAW
+// Endpoint RAW directo compatible 100% con Roblox y cualquier ejecutor
 app.get('/raw/:id', (req, res) => {
   const scriptId = req.params.id.replace(/[^a-z0-9]/gi, '');
   const filePath = path.join(SCRIPTS_DIR, `${scriptId}.txt`);
 
+  // Cabeceras universales para ejecutores de Roblox
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
   if (!fs.existsSync(filePath)) {
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     return res.status(404).send('-- Error: Script no encontrado o expirado');
   }
 
   try {
     const scriptContent = fs.readFileSync(filePath, 'utf-8');
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.send(scriptContent);
+    res.status(200).send(scriptContent);
   } catch (err) {
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.status(500).send('-- Error interno al leer el script');
   }
 });
