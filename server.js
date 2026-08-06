@@ -13,19 +13,25 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding: Cambiar Marca a JP SCRIPTS y reemplazar links de Discord
+// 1. Rebranding Aggresive: Cambia marcas y Discord a JP SCRIPTS
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // Reemplazar cualquier invitación de Discord por la tuya
+  // Reemplazar invitaciones de Discord
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar títulos de interfaz y ventanas por "JP SCRIPTS"
-  modifiedCode = modifiedCode.replace(/(\b(Title|Name|WindowName|HubName)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
+  // Reemplazar títulos en propiedades de UI
+  modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|Name|Header)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Reemplazar textos en la inicialización de librerías UI
-  modifiedCode = modifiedCode.replace(/(:(MakeWindow|CreateWindow|CreateLib|NewWindow|AddWindow)\s*\(\s*\{?\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
+  // Reemplazar llamados de funciones en librerías UI
+  modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow|Init)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
+
+  // Reemplazar asignaciones a TextLabels (.Text = "...")
+  modifiedCode = modifiedCode.replace(/(\.Text\s*=\s*["'])[^"']+(["'])/gi, (match, p1, p2) => {
+    if (match.includes('http') || match.includes('discord.gg')) return match;
+    return `${p1}JP SCRIPTS${p2}`;
+  });
 
   return modifiedCode;
 }
@@ -120,7 +126,6 @@ app.post('/api/upload', (req, res) => {
   try {
     fs.writeFileSync(filePath, codePersonalizado, 'utf-8');
 
-    // Forzar siempre protocolo HTTPS si estás en Render u otro Hosting con SSL
     const host = req.get('host');
     const protocol = 'https';
 
@@ -137,12 +142,11 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
-// Endpoint RAW directo compatible 100% con Roblox y cualquier ejecutor
+// Endpoint RAW compatible con Roblox
 app.get('/raw/:id', (req, res) => {
   const scriptId = req.params.id.replace(/[^a-z0-9]/gi, '');
   const filePath = path.join(SCRIPTS_DIR, `${scriptId}.txt`);
 
-  // Cabeceras universales para ejecutores de Roblox
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
