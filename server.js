@@ -13,33 +13,30 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Universal
+// 1. Rebranding Seguro (Solo texto visible para jugadores)
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // Reemplazar invitaciones de Discord
+  // A. Reemplazar enlaces de invitación de Discord
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Nombres específicos
-  modifiedCode = modifiedCode.replace(/Blossom\s*Redeemer/gi, 'JP SCRIPTS');
-  modifiedCode = modifiedCode.replace(/Lithium\s*Paste/gi, 'JP SCRIPTS');
-  modifiedCode = modifiedCode.replace(/Gamma\s*Hub/gi, 'JP SCRIPTS');
-  modifiedCode = modifiedCode.replace(/Amir\s*Hub/gi, 'JP SCRIPTS');
+  // B. Reemplazar asignaciones directas a textos visibles (.Text = "...")
+  modifiedCode = modifiedCode.replace(/(\.Text\s*=\s*["'])[^"']+(["'])/gi, (match, p1, p2) => {
+    if (match.includes('http') || match.includes('discord.gg')) return match;
+    return `${p1}JP SCRIPTS${p2}`;
+  });
 
-  // Patrón general para cualquier otro HUB / Paste entre comillas
-  modifiedCode = modifiedCode.replace(/(["'])[A-Za-z0-9_\s]+?\s+(Hub|Paste|Redeemer|Script)(["'])/gi, '$1JP SCRIPTS$3');
-
-  // Títulos explícitos de la interfaz
+  // C. Reemplazar propiedades de título en configuraciones de interfaz
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Creación de ventanas en librerías de Roblox
+  // D. Reemplazar títulos en funciones de creación de ventanas
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
 }
 
-// 2. Escáner de Seguridad (Anti-Stealer y Trampas)
+// 2. Escáner de Seguridad
 function analizarSeguridad(code) {
   const alertas = [];
   const lines = code.split(/\r?\n/);
