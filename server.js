@@ -13,24 +13,18 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Seguro (Solo texto visible para jugadores)
+// 1. Rebranding Quirúrgico (Solo Título de Ventana y Discord)
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // A. Reemplazar enlaces de invitación de Discord
+  // A. Reemplazar enlaces de Discord
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // B. Reemplazar asignaciones directas a textos visibles (.Text = "...")
-  modifiedCode = modifiedCode.replace(/(\.Text\s*=\s*["'])[^"']+(["'])/gi, (match, p1, p2) => {
-    if (match.includes('http') || match.includes('discord.gg')) return match;
-    return `${p1}JP SCRIPTS${p2}`;
-  });
-
-  // C. Reemplazar propiedades de título en configuraciones de interfaz
+  // B. Reemplazar variables o propiedades de título explicito
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // D. Reemplazar títulos en funciones de creación de ventanas
+  // C. Reemplazar solo el nombre en funciones de creación de ventanas
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
@@ -142,7 +136,7 @@ app.post('/api/upload', (req, res) => {
   }
 });
 
-// Endpoint RAW compatible con Roblox
+// Endpoint RAW
 app.get('/raw/:id', (req, res) => {
   const scriptId = req.params.id.replace(/[^a-z0-9]/gi, '');
   const filePath = path.join(SCRIPTS_DIR, `${scriptId}.txt`);
