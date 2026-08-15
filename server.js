@@ -13,7 +13,7 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Quirúrgico (Solo Título de Ventana y Discord)
+// 1. Rebranding Quirúrgico Inteligente
 function personalizarScript(code) {
   let modifiedCode = code;
 
@@ -21,16 +21,27 @@ function personalizarScript(code) {
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // B. Reemplazar variables o propiedades de título explicito
+  // B. Lista de títulos conocidos a reemplazar entre comillas
+  const nombresDeScripts = [
+    'PET FINDER', 'Pet Finder', 'pet finder',
+    'Blossom Redeemer', 'Lithium Paste', 'Gamma Hub', 'Amir Hub'
+  ];
+
+  nombresDeScripts.forEach(nombre => {
+    const regex = new RegExp(`(["'])${nombre}(["'])`, 'gi');
+    modifiedCode = modifiedCode.replace(regex, '$1JP SCRIPTS$2');
+  });
+
+  // C. Reemplazar variables o propiedades de título explícito
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // C. Reemplazar solo el nombre en funciones de creación de ventanas
+  // D. Reemplazar solo el nombre en funciones de creación de ventanas
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
 }
 
-// 2. Escáner de Seguridad
+// 2. Escáner de Seguridad (Anti-Stealer y Trampas)
 function analizarSeguridad(code) {
   const alertas = [];
   const lines = code.split(/\r?\n/);
