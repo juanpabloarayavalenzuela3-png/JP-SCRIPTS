@@ -13,29 +13,24 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Quirúrgico Inteligente
+// 1. Rebranding Dinámico Generativo
 function personalizarScript(code) {
   let modifiedCode = code;
 
-  // A. Reemplazar enlaces de Discord
+  // Reemplazar invitaciones de Discord
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // B. Lista de títulos conocidos a reemplazar entre comillas
-  const nombresDeScripts = [
-    'PET FINDER', 'Pet Finder', 'pet finder',
-    'Blossom Redeemer', 'Lithium Paste', 'Gamma Hub', 'Amir Hub'
-  ];
+  // Reemplazar textos de marca / créditos
+  modifiedCode = modifiedCode.replace(/(["'])Leaked by[^"']*(["'])/gi, '$1JP SCRIPTS$2');
 
-  nombresDeScripts.forEach(nombre => {
-    const regex = new RegExp(`(["'])${nombre}(["'])`, 'gi');
-    modifiedCode = modifiedCode.replace(regex, '$1JP SCRIPTS$2');
-  });
+  // Patrón para capturar cualquier título que finalice con términos típicos de UI
+  modifiedCode = modifiedCode.replace(/(["'])[A-Za-z0-9_\s]+?\s+(HUB|ANTI\s*LAG|ANTI\s*LAGGER|PASTE|REDEEMER|FINDER|COPIER)(["'])/gi, '$1JP SCRIPTS$3');
 
-  // C. Reemplazar variables o propiedades de título explícito
+  // Propiedades de título explícitas
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // D. Reemplazar solo el nombre en funciones de creación de ventanas
+  // Argumento principal en la creación de ventanas
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
@@ -171,3 +166,4 @@ app.get('/raw/:id', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+
