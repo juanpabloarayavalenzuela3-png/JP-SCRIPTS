@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JP SCRIPTS - Panel de Subida</title>
+  <title>JP SCRIPTS - Generador</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -15,7 +15,7 @@
     }
     h1 { color: #00ff88; text-align: center; }
     label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; }
-    input[type="text"], textarea {
+    input[type="text"], textarea, input[type="file"] {
       width: 100%;
       padding: 10px;
       background: #1e1e1e;
@@ -24,7 +24,8 @@
       border-radius: 5px;
       box-sizing: border-box;
     }
-    textarea { height: 200px; font-family: monospace; }
+    input[type="file"] { cursor: pointer; }
+    textarea { height: 180px; font-family: monospace; }
     button {
       margin-top: 20px;
       width: 100%;
@@ -49,7 +50,10 @@
   <label for="originalTitle">Nombre exacto del menú a cambiar (Opcional):</label>
   <input type="text" id="originalTitle" placeholder="Ej: MAPLE HUB, 7TY ANTI LAG, PET FINDER" />
 
-  <label for="scriptCode">Código Lua del Script:</label>
+  <label for="fileInput">Seleccionar archivo de script (.lua o .txt):</label>
+  <input type="file" id="fileInput" accept=".lua,.txt" onchange="cargarArchivo(event)" />
+
+  <label for="scriptCode">O pega aquí el Código Lua:</label>
   <textarea id="scriptCode" placeholder="Pega aquí tu script Lua completo..."></textarea>
 
   <button onclick="subirScript()">Procesar Script</button>
@@ -61,12 +65,24 @@
   </div>
 
   <script>
+    // Carga el texto del archivo directamente en el área de texto
+    function cargarArchivo(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('scriptCode').value = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
     async function subirScript() {
       const source = document.getElementById('scriptCode').value;
       const customTitle = document.getElementById('originalTitle').value;
 
       if (!source.trim()) {
-        alert('Por favor pega un script antes de procesar.');
+        alert('Por favor selecciona un archivo o pega un script antes de procesar.');
         return;
       }
 
