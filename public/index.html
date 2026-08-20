@@ -3,306 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JP SCRIPTS - Anti-Stealer & Obfuscador</title>
+  <title>JP SCRIPTS - Panel de Subida</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
     body {
-      background-color: #121214;
-      color: #e1e1e6;
-      display: flex;
-      justify-content: center;
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
       padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
     }
-
-    .container {
+    h1 { color: #00ff88; text-align: center; }
+    label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; }
+    input[type="text"], textarea {
       width: 100%;
-      max-width: 650px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    h1 {
-      text-align: center;
-      color: #00e676;
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
-
-    .drop-zone {
-      border: 2px dashed #00e676;
-      border-radius: 8px;
-      padding: 20px;
-      text-align: center;
-      background: #1a1a1e;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .drop-zone:hover {
-      background: #222228;
-    }
-
-    textarea {
-      width: 100%;
-      height: 120px;
-      background-color: #202024;
-      border: 1px solid #323238;
-      border-radius: 6px;
-      color: #a8a8b3;
-      padding: 12px;
-      font-family: monospace;
-      resize: vertical;
-    }
-
-    .btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .btn-green {
-      background-color: #00e676;
-      color: #000;
-    }
-
-    .btn-green:hover {
-      background-color: #00c853;
-    }
-
-    .btn-blue {
-      background-color: #29b6f6;
-      color: #000;
-    }
-
-    .btn-blue:hover {
-      background-color: #0288d1;
-    }
-
-    .btn-clear {
-      background-color: #323238;
+      padding: 10px;
+      background: #1e1e1e;
+      border: 1px solid #333;
       color: #fff;
-      padding: 8px;
-      font-size: 13px;
-      margin-top: 5px;
+      border-radius: 5px;
+      box-sizing: border-box;
     }
-
-    .console-title {
+    textarea { height: 200px; font-family: monospace; }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #00ff88;
+      border: none;
+      color: #000;
       font-weight: bold;
-      font-size: 18px;
-      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 16px;
     }
-
-    .console-box {
-      background-color: #0d0d0f;
-      border: 1px solid #29292e;
-      border-radius: 6px;
-      padding: 15px;
-      font-family: monospace;
-      color: #00e676;
-      min-height: 200px;
-      max-height: 400px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .alert-line {
-      color: #ff5252;
-      font-weight: bold;
-      display: block;
-      margin-top: 8px;
-    }
-
-    .code-snippet {
-      color: #ffb74d;
-      background: #1e1212;
-      padding: 4px 8px;
-      border-radius: 4px;
-      display: block;
-      margin-top: 2px;
-      font-size: 12px;
-    }
+    button:hover { background: #00cc6a; }
+    #resultado { margin-top: 20px; padding: 15px; background: #1e1e1e; border-radius: 5px; display: none; }
+    .loadstring { font-family: monospace; background: #000; padding: 10px; border-radius: 3px; word-break: break-all; }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>JP SCRIPTS - Escáner Anti-Stealer</h1>
+  <h1>JP SCRIPTS - Generador</h1>
 
-    <div class="drop-zone" id="dropZone">
-      <input type="file" id="fileInput" accept=".txt,.lua" style="display: none;" multiple>
-      <p id="dropText">📁 Haz clic aquí o arrastra tus archivos (.lua / .txt)</p>
-    </div>
+  <label for="originalTitle">Nombre exacto del menú a cambiar (Opcional):</label>
+  <input type="text" id="originalTitle" placeholder="Ej: MAPLE HUB, 7TY ANTI LAG, PET FINDER" />
 
-    <button class="btn btn-clear" id="clearFilesBtn" style="display: none;">🗑️ Vaciar lista de archivos</button>
+  <label for="scriptCode">Código Lua del Script:</label>
+  <textarea id="scriptCode" placeholder="Pega aquí tu script Lua completo..."></textarea>
 
-    <p style="text-align: center; color: #7c7c8a; margin-top: 5px;">— O pega tu script abajo —</p>
+  <button onclick="subirScript()">Procesar Script</button>
 
-    <textarea id="scriptInput" placeholder="print('Script de prueba')"></textarea>
-
-    <button class="btn btn-green" id="scanBtn">Escanear y Generar RAW</button>
-    <button class="btn btn-blue" id="downloadBtn" style="display: none;">Descargar Lista de URLs (.txt)</button>
-
-    <div class="console-title">Consola de Análisis:</div>
-    <div class="console-box" id="consoleOutput">Esperando archivos o script para escanear...</div>
+  <div id="resultado">
+    <h3>¡Script Procesado!</h3>
+    <p><strong>Loadstring para tu ejecutor:</strong></p>
+    <div id="loadstringOutput" class="loadstring"></div>
   </div>
 
   <script>
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropZone');
-    const dropText = document.getElementById('dropText');
-    const scriptInput = document.getElementById('scriptInput');
-    const scanBtn = document.getElementById('scanBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const clearFilesBtn = document.getElementById('clearFilesBtn');
-    const consoleOutput = document.getElementById('consoleOutput');
+    async function subirScript() {
+      const source = document.getElementById('scriptCode').value;
+      const customTitle = document.getElementById('originalTitle').value;
 
-    let accumulatedFiles = [];
-    let generatedLoadstrings = [];
-
-    dropZone.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length > 0) {
-        for (const file of fileInput.files) {
-          accumulatedFiles.push(file);
-        }
-        actualizarInterfazArchivos();
-        fileInput.value = '';
-      }
-    });
-
-    dropZone.addEventListener('dragover', (e) => e.preventDefault());
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (e.dataTransfer.files.length > 0) {
-        for (const file of e.dataTransfer.files) {
-          accumulatedFiles.push(file);
-        }
-        actualizarInterfazArchivos();
-      }
-    });
-
-    clearFilesBtn.addEventListener('click', () => {
-      accumulatedFiles = [];
-      generatedLoadstrings = [];
-      actualizarInterfazArchivos();
-      downloadBtn.style.display = 'none';
-      consoleOutput.innerText = 'Lista de archivos vaciada.';
-    });
-
-    function actualizarInterfazArchivos() {
-      const total = accumulatedFiles.length;
-      if (total > 0) {
-        dropText.innerText = `📄 ${total} archivo(s) seleccionado(s) en total`;
-        clearFilesBtn.style.display = 'block';
-      } else {
-        dropText.innerText = '📁 Haz clic aquí o arrastra tus archivos (.lua / .txt)';
-        clearFilesBtn.style.display = 'none';
-      }
-    }
-
-    scanBtn.addEventListener('click', async () => {
-      if (accumulatedFiles.length === 0 && !scriptInput.value.trim()) {
-        consoleOutput.innerHTML = '<span style="color: #ff5252;">⚠️ Por favor pega un script o sube al menos un archivo.</span>';
+      if (!source.trim()) {
+        alert('Por favor pega un script antes de procesar.');
         return;
       }
 
-      consoleOutput.innerText = 'Iniciando análisis anti-stealer...\n\n';
-      let logHtml = '';
-      generatedLoadstrings = [];
-
-      if (accumulatedFiles.length > 0) {
-        for (let i = 0; i < accumulatedFiles.length; i++) {
-          const file = accumulatedFiles[i];
-          const content = await file.text();
-          
-          logHtml += await escanearScriptServidor(content, file.name, i + 1, accumulatedFiles.length);
-        }
-      }
-
-      const textoPegado = scriptInput.value.trim();
-      if (textoPegado) {
-        logHtml += await escanearScriptServidor(textoPegado, 'script_pegado.txt', 1, 1);
-      }
-
-      logHtml += `\n¡Análisis completado!`;
-      consoleOutput.innerHTML = logHtml;
-
-      if (generatedLoadstrings.length > 0) {
-        downloadBtn.style.display = 'block';
-      }
-    });
-
-    async function escanearScriptServidor(content, filename, actual, total) {
       try {
         const response = await fetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ source: content, filename: filename })
+          body: JSON.stringify({
+            source: source,
+            filename: 'script',
+            customTitle: customTitle
+          })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-          generatedLoadstrings.push(`-- [${data.filename}]\n${data.loadstring}\n`);
-
-          let resultado = `[OK ${actual}/${total}] ${data.filename} -> <a href="${data.raw_url}" target="_blank" style="color: #29b6f6;">${data.raw_url}</a>\n`;
-
-          if (data.seguridad && data.seguridad.esPeligroso) {
-            resultado += `<span style="color: #ff5252; font-weight: bold;">🚨 PELIGRO DETECTADO EN ${data.filename}:</span>\n`;
-
-            data.seguridad.detalles.forEach(item => {
-              resultado += `<span class="alert-line">- ${item.mensaje}</span>`;
-              resultado += `<span class="code-snippet">  📌 Código: ${escapeHtml(item.linea)}</span>\n`;
-            });
-          } else {
-            resultado += `<span style="color: #00e676; font-weight: bold;">✅ Script Seguro: No se encontraron amenazas.</span>\n`;
-          }
-
-          return resultado + '\n';
+          document.getElementById('loadstringOutput').innerText = data.loadstring;
+          document.getElementById('resultado').style.display = 'block';
         } else {
-          return `<span style="color: #ff5252;">❌ Error en ${filename}: ${data.error || 'No se pudo procesar'}</span>\n\n`;
+          alert('Error: ' + (data.error || 'No se pudo procesar el script'));
         }
       } catch (err) {
-        return `<span style="color: #ff5252;">❌ Error de conexión al escanear ${filename}.</span>\n\n`;
+        alert('Error de conexión con el servidor.');
       }
-    }
-
-    // Evento para descargar la lista de loadstrings
-    downloadBtn.addEventListener('click', () => {
-      if (generatedLoadstrings.length === 0) return;
-
-      const blob = new Blob([generatedLoadstrings.join('\n')], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'lista_loadstrings_JP_SCRIPTS.txt';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-
-    function escapeHtml(text) {
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
     }
   </script>
 </body>
