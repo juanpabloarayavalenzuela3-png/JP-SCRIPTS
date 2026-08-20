@@ -13,30 +13,37 @@ app.use(express.text({ limit: '100mb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.static('public'));
 
-// 1. Rebranding Dinámico Generativo
-function personalizarScript(code) {
+// 1. Rebranding Quirúrgico + Título Personalizado
+function personalizarScript(code, customTitle = '') {
   let modifiedCode = code;
 
-  // Reemplazar invitaciones de Discord
+  // A. Reemplazar enlaces de Discord por el tuyo
   const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
   modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
 
-  // Reemplazar textos de marca / créditos
+  // B. Si indicaste un nombre específico en la web (Ej: MAPLE HUB, 7TY ANTI LAG)
+  if (customTitle && customTitle.trim().length > 0) {
+    const cleanTitle = customTitle.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexCustom = new RegExp(`(["'])${cleanTitle}(["'])`, 'gi');
+    modifiedCode = modifiedCode.replace(regexCustom, '$1JP SCRIPTS$2');
+  }
+
+  // C. Reemplazo de subtítulos / créditos promocionales
   modifiedCode = modifiedCode.replace(/(["'])Leaked by[^"']*(["'])/gi, '$1JP SCRIPTS$2');
 
-  // Patrón para capturar cualquier título que finalice con términos típicos de UI
+  // D. Detección automática por sufijos típicos de menús
   modifiedCode = modifiedCode.replace(/(["'])[A-Za-z0-9_\s]+?\s+(HUB|ANTI\s*LAG|ANTI\s*LAGGER|PASTE|REDEEMER|FINDER|COPIER)(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Propiedades de título explícitas
+  // E. Propiedades estándar de título en librerías
   modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
-  // Argumento principal en la creación de ventanas
+  // F. Funciones de creación de ventana
   modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
 
   return modifiedCode;
 }
 
-// 2. Escáner de Seguridad (Anti-Stealer y Trampas)
+// 2. Escáner de Seguridad
 function analizarSeguridad(code) {
   const alertas = [];
   const lines = code.split(/\r?\n/);
@@ -105,10 +112,12 @@ function analizarSeguridad(code) {
 app.post('/api/upload', (req, res) => {
   let source = '';
   let filename = 'script';
+  let customTitle = '';
 
   if (typeof req.body === 'object' && req.body !== null) {
     source = req.body.source || '';
     filename = req.body.filename || 'script';
+    customTitle = req.body.customTitle || '';
   } else {
     source = req.body;
   }
@@ -117,7 +126,7 @@ app.post('/api/upload', (req, res) => {
     return res.status(400).json({ error: 'El script está vacío o es inválido' });
   }
 
-  const codePersonalizado = personalizarScript(source);
+  const codePersonalizado = personalizarScript(source, customTitle);
   const analist = analizarSeguridad(codePersonalizado);
 
   const id = Math.random().toString(36).substring(2, 10);
@@ -166,4 +175,3 @@ app.get('/raw/:id', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
-
