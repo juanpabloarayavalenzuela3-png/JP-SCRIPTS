@@ -3,111 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JP SCRIPTS - Generador</title>
+  <title>JP SOURCES - Enviador a Discord</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background-color: #121212;
       color: #ffffff;
       padding: 20px;
-      max-width: 800px;
+      max-width: 500px;
       margin: 0 auto;
     }
-    h1 { color: #00ff88; text-align: center; }
-    label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; }
-    input[type="text"], textarea, input[type="file"] {
+    h1 { color: #00ff88; text-align: center; margin-bottom: 25px; }
+    label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 8px; }
+    input[type="password"], input[type="file"] {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       background: #1e1e1e;
       border: 1px solid #333;
       color: #fff;
-      border-radius: 5px;
+      border-radius: 6px;
       box-sizing: border-box;
     }
     input[type="file"] { cursor: pointer; }
-    textarea { height: 180px; font-family: monospace; }
     button {
-      margin-top: 20px;
+      margin-top: 25px;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       background: #00ff88;
       border: none;
       color: #000;
       font-weight: bold;
       cursor: pointer;
-      border-radius: 5px;
+      border-radius: 6px;
       font-size: 16px;
     }
     button:hover { background: #00cc6a; }
-    #resultado { margin-top: 20px; padding: 15px; background: #1e1e1e; border-radius: 5px; display: none; }
-    .loadstring { font-family: monospace; background: #000; padding: 10px; border-radius: 3px; word-break: break-all; }
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      display: none;
+      font-weight: bold;
+    }
+    .success { background: #1b432e; color: #00ff88; border: 1px solid #00ff88; }
+    .error { background: #431b1b; color: #ff4d4d; border: 1px solid #ff4d4d; }
   </style>
 </head>
 <body>
 
-  <h1>JP SCRIPTS - Generador</h1>
+  <h1>JP SOURCES</h1>
 
-  <label for="originalTitle">Nombre exacto del menú a cambiar (Opcional):</label>
-  <input type="text" id="originalTitle" placeholder="Ej: MAPLE HUB, 7TY ANTI LAG, PET FINDER" />
+  <label for="password">Contraseña de Acceso:</label>
+  <input type="password" id="password" placeholder="Escribe la contraseña..." />
 
-  <label for="fileInput">Seleccionar archivo de script (.lua o .txt):</label>
-  <input type="file" id="fileInput" accept=".lua,.txt" onchange="cargarArchivo(event)" />
+  <label for="fileInput">Seleccionar archivo(s):</label>
+  <input type="file" id="fileInput" multiple />
 
-  <label for="scriptCode">O pega aquí el Código Lua:</label>
-  <textarea id="scriptCode" placeholder="Pega aquí tu script Lua completo..."></textarea>
+  <button onclick="enviarArchivos()">Enviar a Discord</button>
 
-  <button onclick="subirScript()">Procesar Script</button>
-
-  <div id="resultado">
-    <h3>¡Script Procesado!</h3>
-    <p><strong>Loadstring para tu ejecutor:</strong></p>
-    <div id="loadstringOutput" class="loadstring"></div>
-  </div>
+  <div id="status"></div>
 
   <script>
-    // Carga el texto del archivo directamente en el área de texto
-    function cargarArchivo(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    async function enviarArchivos() {
+      const pass = document.getElementById('password').value;
+      const fileInput = document.getElementById('fileInput');
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('scriptCode').value = e.target.result;
-      };
-      reader.readAsText(file);
-    }
-
-    async function subirScript() {
-      const source = document.getElementById('scriptCode').value;
-      const customTitle = document.getElementById('originalTitle').value;
-
-      if (!source.trim()) {
-        alert('Por favor selecciona un archivo o pega un script antes de procesar.');
+      if (!pass) {
+        mostrarEstado('Por favor ingresa la contraseña.', false);
         return;
       }
 
+      if (!fileInput.files || fileInput.files.length === 0) {
+        mostrarEstado('Por favor selecciona al menos un archivo.', false);
+        return;
+      }
+
+      mostrarEstado('Enviando archivos a Discord...', true);
+
+      const formData = new FormData();
+      formData.append('password', pass);
+
+      for (let i = 0; i < fileInput.files.length; i++) {
+        formData.append('files', fileInput.files[i]);
+      }
+
       try {
-        const response = await fetch('/api/upload', {
+        const response = await fetch('/api/upload-webhook', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            source: source,
-            filename: 'script',
-            customTitle: customTitle
-          })
+          body: formData
         });
 
         const data = await response.json();
 
         if (response.ok) {
-          document.getElementById('loadstringOutput').innerText = data.loadstring;
-          document.getElementById('resultado').style.display = 'block';
+          mostrarEstado(`¡Éxito! Se enviaron ${data.total} archivo(s) a Discord.`, true);
+          fileInput.value = ''; // Limpiar la selección de archivos
         } else {
-          alert('Error: ' + (data.error || 'No se pudo procesar el script'));
+          mostrarEstado('Error: ' + (data.error || 'Acceso denegado o error de envío.'), false);
         }
       } catch (err) {
-        alert('Error de conexión con el servidor.');
+        mostrarEstado('Error de conexión con el servidor.', false);
       }
+    }
+
+    function mostrarEstado(msg, esExito) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerText = msg;
+      statusDiv.className = esExito ? 'success' : 'error';
+      statusDiv.style.display = 'block';
     }
   </script>
 </body>
