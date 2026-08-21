@@ -1,177 +1,63 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const multer = require('multer');
+const FormData = require('form-data');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const app = express();
-const SCRIPTS_DIR = path.join(__dirname, 'scripts_data');
+const upload = multer({ storage: multer.memoryStorage() });
 
-if (!fs.existsSync(SCRIPTS_DIR)) {
-  fs.mkdirSync(SCRIPTS_DIR, { recursive: true });
-}
+// Webhook de Discord integrada
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1540178315610955906/KsUMMM2-3Q6XuxVDmDuRp0vHyyBBl-T8pvfK5DieSydJywWjNGmTOmzZtuyRt1IeDdBt';
 
-app.use(express.text({ limit: '100mb' }));
-app.use(express.json({ limit: '100mb' }));
+// Contraseña requerida para enviar archivos
+const ADMIN_PASSWORD = 'JP SOURCES';
+
 app.use(express.static('public'));
 
-// 1. Rebranding Quirúrgico + Título Personalizado
-function personalizarScript(code, customTitle = '') {
-  let modifiedCode = code;
-
-  // A. Reemplazar enlaces de Discord por el tuyo
-  const discordRegex = /(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li|com\/invite))\/[a-zA-Z0-9_-]+/gi;
-  modifiedCode = modifiedCode.replace(discordRegex, 'https://discord.gg/MD6aTg6Hjw');
-
-  // B. Si indicaste un nombre específico en la web (Ej: MAPLE HUB, 7TY ANTI LAG)
-  if (customTitle && customTitle.trim().length > 0) {
-    const cleanTitle = customTitle.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regexCustom = new RegExp(`(["'])${cleanTitle}(["'])`, 'gi');
-    modifiedCode = modifiedCode.replace(regexCustom, '$1JP SCRIPTS$2');
-  }
-
-  // C. Reemplazo de subtítulos / créditos promocionales
-  modifiedCode = modifiedCode.replace(/(["'])Leaked by[^"']*(["'])/gi, '$1JP SCRIPTS$2');
-
-  // D. Detección automática por sufijos típicos de menús
-  modifiedCode = modifiedCode.replace(/(["'])[A-Za-z0-9_\s]+?\s+(HUB|ANTI\s*LAG|ANTI\s*LAGGER|PASTE|REDEEMER|FINDER|COPIER)(["'])/gi, '$1JP SCRIPTS$3');
-
-  // E. Propiedades estándar de título en librerías
-  modifiedCode = modifiedCode.replace(/(\b(Title|TitleName|WindowName|HubName|HeaderText)\s*[:=]\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
-
-  // F. Funciones de creación de ventana
-  modifiedCode = modifiedCode.replace(/(:(CreateWindow|CreateLib|MakeWindow|NewWindow|AddWindow)\s*\(\s*["'])[^"']+(["'])/gi, '$1JP SCRIPTS$3');
-
-  return modifiedCode;
-}
-
-// 2. Escáner de Seguridad
-function analizarSeguridad(code) {
-  const alertas = [];
-  const lines = code.split(/\r?\n/);
-  const palabrasRobo = ['trade', 'traderequest', 'accepttrade', 'confirmtrade', 'sendmail', 'gift', 'giftpet', 'sendgems', 'transfer', 'dropitem', 'sendpets', 'bankdeposit', 'stealloot', 'machine', 'fuse', 'deposit', 'pawn', 'vault', 'inventory', 'brainrot', 'steal', 'claim', 'give', 'offer', 'swap', 'moreira'];
-
-  lines.forEach((lineText, idx) => {
-    const numLinea = idx + 1;
-    const cleanLine = lineText.toLowerCase();
-
-    const esWebhookVar = /webhook/i.test(lineText);
-    const esDiscordUrl = /discord\.com\/api/i.test(lineText) || /discordapp\.com\/api/i.test(lineText);
-    const esEnvioHttp = /httpService|postasync|getasync|request\s*\(/i.test(lineText);
-
-    if (esWebhookVar || esDiscordUrl) {
-      alertas.push({
-        tipo: 'WEBHOOK DETECTADO',
-        mensaje: `🚨 **Línea ${numLinea}**: Uso de Webhook o canal de exfiltración de Discord.`,
-        linea: lineText.trim()
-      });
-    } else if (esEnvioHttp && (cleanLine.includes('brainrot') || cleanLine.includes('server') || cleanLine.includes('player') || cleanLine.includes('data'))) {
-      alertas.push({
-        tipo: 'ENVÍO DE DATOS EXTERNO',
-        mensaje: `🚨 **Línea ${numLinea}**: Envío masivo de datos mediante peticiones HTTP.`,
-        linea: lineText.trim()
-      });
-    }
-
-    const congelaJugador = /walkspeed\s*=\s*0|jumppower\s*=\s*0|anchored\s*=\s*true/i.test(lineText);
-    const destruyeItems = /:destroy\s*\(\s*\)/i.test(lineText) && (cleanLine.includes('tool') || cleanLine.includes('backpack'));
-
-    if (congelaJugador || destruyeItems) {
-      alertas.push({
-        tipo: 'TRAMPA / BLOQUEO DE JUGADOR',
-        mensaje: `🚨 **Línea ${numLinea}**: El script inmoviliza al jugador o elimina objetos de su inventario.`,
-        linea: lineText.trim()
-      });
-    }
-
-    if (/:(FireServer|InvokeServer)\s*\(/i.test(lineText)) {
-      const coincidePalabra = palabrasRobo.some(p => cleanLine.includes(p));
-      if (coincidePalabra) {
-        alertas.push({
-          tipo: 'ROBO / AUTO-TRADE',
-          mensaje: `🚨 **Línea ${numLinea}**: Llamada remota automática enviada al servidor.`,
-          linea: lineText.trim()
-        });
-      }
-    }
-
-    if (/loadstring\s*\(/i.test(lineText)) {
-      alertas.push({
-        tipo: 'SCRIPT CERRADO',
-        mensaje: `👁️ **Línea ${numLinea}**: Ejecución de código externo no verificado (\`loadstring\`).`,
-        linea: lineText.trim()
-      });
-    }
-  });
-
-  return {
-    esPeligroso: alertas.length > 0,
-    detalles: alertas
-  };
-}
-
-// Endpoint de subida
-app.post('/api/upload', (req, res) => {
-  let source = '';
-  let filename = 'script';
-  let customTitle = '';
-
-  if (typeof req.body === 'object' && req.body !== null) {
-    source = req.body.source || '';
-    filename = req.body.filename || 'script';
-    customTitle = req.body.customTitle || '';
-  } else {
-    source = req.body;
-  }
-
-  if (!source || typeof source !== 'string' || source.trim().length === 0) {
-    return res.status(400).json({ error: 'El script está vacío o es inválido' });
-  }
-
-  const codePersonalizado = personalizarScript(source, customTitle);
-  const analist = analizarSeguridad(codePersonalizado);
-
-  const id = Math.random().toString(36).substring(2, 10);
-  const filePath = path.join(SCRIPTS_DIR, `${id}.txt`);
-
+// Endpoint para recibir los archivos y reenviarlos intactos a Discord
+app.post('/api/upload-webhook', upload.array('files'), async (req, res) => {
   try {
-    fs.writeFileSync(filePath, codePersonalizado, 'utf-8');
+    const userPass = req.body.password;
+    const files = req.files;
 
-    const host = req.get('host');
-    const protocol = 'https';
+    // Verificar contraseña
+    if (userPass !== ADMIN_PASSWORD) {
+      return res.status(401).json({ error: 'Contraseña incorrecta.' });
+    }
 
-    res.json({
-      id: id,
-      filename: filename,
-      raw_url: `${protocol}://${host}/raw/${id}`,
-      loadstring: `loadstring(game:HttpGet("${protocol}://${host}/raw/${id}"))()`,
-      seguridad: analist
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No se seleccionó ningún archivo.' });
+    }
+
+    const form = new FormData();
+    form.append('content', `📦 **Nuevos archivos enviados** (${files.length} archivo/s)`);
+
+    // Adjuntar los archivos tal cual fueron recibidos (sin modificar nada)
+    files.forEach((file, index) => {
+      form.append(`files[${index}]`, file.buffer, { filename: file.originalname });
     });
+
+    // Enviar directamente a Discord
+    const discordResponse = await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      body: form,
+      headers: form.getHeaders()
+    });
+
+    if (discordResponse.ok) {
+      return res.json({ success: true, total: files.length });
+    } else {
+      const errorText = await discordResponse.text();
+      console.error('Error Webhook Discord:', errorText);
+      return res.status(500).json({ error: 'Discord rechazó la solicitud.' });
+    }
+
   } catch (err) {
-    console.error('Error guardando archivo:', err);
-    res.status(500).json({ error: 'Error interno al guardar el script' });
-  }
-});
-
-// Endpoint RAW
-app.get('/raw/:id', (req, res) => {
-  const scriptId = req.params.id.replace(/[^a-z0-9]/gi, '');
-  const filePath = path.join(SCRIPTS_DIR, `${scriptId}.txt`);
-
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send('-- Error: Script no encontrado o expirado');
-  }
-
-  try {
-    const scriptContent = fs.readFileSync(filePath, 'utf-8');
-    res.status(200).send(scriptContent);
-  } catch (err) {
-    res.status(500).send('-- Error interno al leer el script');
+    console.error('Error interno:', err);
+    return res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+
