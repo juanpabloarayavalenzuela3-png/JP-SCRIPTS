@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JP SOURCES - Enviador a Discord</title>
+  <title>JP SOURCES - Enviador Masivo</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,7 +13,7 @@
       max-width: 500px;
       margin: 0 auto;
     }
-    h1 { color: #00ff88; text-align: center; margin-bottom: 25px; }
+    h1 { color: #00ff88; text-align: center; margin-bottom: 20px; }
     label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 8px; }
     input[type="password"], input[type="file"] {
       width: 100%;
@@ -38,6 +38,20 @@
       font-size: 16px;
     }
     button:hover { background: #00cc6a; }
+    #lista-archivos {
+      margin-top: 15px;
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 6px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    .archivo-item {
+      padding: 4px 8px;
+      border-bottom: 1px solid #333;
+      color: #00ff88;
+    }
     #status {
       margin-top: 20px;
       padding: 12px;
@@ -57,14 +71,39 @@
   <label for="password">Contraseña de Acceso:</label>
   <input type="password" id="password" placeholder="Escribe la contraseña..." />
 
-  <label for="fileInput">Seleccionar archivo(s):</label>
-  <input type="file" id="fileInput" multiple />
+  <label for="fileInput">Seleccionar Archivos (Mantén presionado para elegir varios):</label>
+  <!-- Permite selección múltiple directa en móviles -->
+  <input type="file" id="fileInput" multiple onchange="mostrarArchivos(this)" />
 
-  <button onclick="enviarArchivos()">Enviar a Discord</button>
+  <div id="lista-archivos" style="display: none;">
+    <strong>Archivos seleccionados:</strong>
+    <div id="nombres-archivos"></div>
+  </div>
+
+  <button onclick="enviarArchivos()">Enviar Todos a Discord</button>
 
   <div id="status"></div>
 
   <script>
+    // Muestra la lista de archivos seleccionados de una sola vez
+    function mostrarArchivos(input) {
+      const contenedor = document.getElementById('lista-archivos');
+      const nombresDiv = document.getElementById('nombres-archivos');
+      nombresDiv.innerHTML = '';
+
+      if (input.files && input.files.length > 0) {
+        for (let i = 0; i < input.files.length; i++) {
+          const item = document.createElement('div');
+          item.className = 'archivo-item';
+          item.innerText = `📄 ${input.files[i].name}`;
+          nombresDiv.appendChild(item);
+        }
+        contenedor.style.display = 'block';
+      } else {
+        contenedor.style.display = 'none';
+      }
+    }
+
     async function enviarArchivos() {
       const pass = document.getElementById('password').value;
       const fileInput = document.getElementById('fileInput');
@@ -75,15 +114,16 @@
       }
 
       if (!fileInput.files || fileInput.files.length === 0) {
-        mostrarEstado('Por favor selecciona al menos un archivo.', false);
+        mostrarEstado('Por favor selecciona los archivos primero.', false);
         return;
       }
 
-      mostrarEstado('Enviando archivos a Discord...', true);
+      mostrarEstado(`Enviando ${fileInput.files.length} archivo(s) a Discord...`, true);
 
       const formData = new FormData();
       formData.append('password', pass);
 
+      // Agrega todos los archivos seleccionados en un solo envío
       for (let i = 0; i < fileInput.files.length; i++) {
         formData.append('files', fileInput.files[i]);
       }
@@ -97,8 +137,9 @@
         const data = await response.json();
 
         if (response.ok) {
-          mostrarEstado(`¡Éxito! Se enviaron ${data.total} archivo(s) a Discord.`, true);
-          fileInput.value = ''; // Limpiar la selección de archivos
+          mostrarEstado(`¡Éxito! Se enviaron ${data.total} archivo(s) juntos a Discord.`, true);
+          fileInput.value = ''; 
+          document.getElementById('lista-archivos').style.display = 'none';
         } else {
           mostrarEstado('Error: ' + (data.error || 'Acceso denegado o error de envío.'), false);
         }
