@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JP SOURCES - Enviador Masivo</title>
+  <title>JP SOURCES - Enviador Individual</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -79,7 +79,7 @@
     <div id="nombres-archivos"></div>
   </div>
 
-  <button onclick="enviarArchivos()">Enviar Todos a Discord</button>
+  <button id="btnEnviar" onclick="enviarArchivos()">Enviar Archivos a Discord</button>
 
   <div id="status"></div>
 
@@ -105,6 +105,7 @@
     async function enviarArchivos() {
       const pass = document.getElementById('password').value;
       const fileInput = document.getElementById('fileInput');
+      const btn = document.getElementById('btnEnviar');
 
       if (!pass) {
         mostrarEstado('Por favor ingresa la contraseña.', false);
@@ -116,21 +117,18 @@
         return;
       }
 
-      const totalArchivos = fileInput.files.length;
-      const LOTE_TAMANO = 8; // Envía de 8 en 8 para no saturar Discord
-      let enviadosExito = 0;
+      const total = fileInput.files.length;
+      btn.disabled = true;
 
-      mostrarEstado(`Procesando envío de ${totalArchivos} archivos...`, true);
+      // Recorrer y enviar ARCHIVO POR ARCHIVO (1 mensaje por archivo)
+      for (let i = 0; i < total; i++) {
+        const archivoActual = fileInput.files[i];
+        
+        mostrarEstado(`Enviando (${i + 1}/${total}): ${archivoActual.name}...`, true);
 
-      // Dividir el total de archivos en bloques de 8
-      for (let i = 0; i < totalArchivos; i += LOTE_TAMANO) {
         const formData = new FormData();
         formData.append('password', pass);
-
-        const bloque = Array.from(fileInput.files).slice(i, i + LOTE_TAMANO);
-        bloque.forEach(file => formData.append('files', file));
-
-        mostrarEstado(`Enviando paquete (${Math.min(i + LOTE_TAMANO, totalArchivos)} de ${totalArchivos})...`, true);
+        formData.append('files', archivoActual);
 
         try {
           const response = await fetch('/api/upload-webhook', {
@@ -138,25 +136,26 @@
             body: formData
           });
 
-          if (response.ok) {
-            enviadosExito += bloque.length;
-          } else {
+          if (!response.ok) {
             const data = await response.json();
-            mostrarEstado('Error: ' + (data.error || 'Fallo al enviar un paquete.'), false);
+            mostrarEstado(`Error en el archivo ${archivoActual.name}: ` + (data.error || 'Acceso denegado.'), false);
+            btn.disabled = false;
             return;
           }
         } catch (err) {
-          mostrarEstado('Error de conexión con el servidor.', false);
+          mostrarEstado(`Error de conexión al enviar ${archivoActual.name}`, false);
+          btn.disabled = false;
           return;
         }
 
-        // Pequeña pausa entre paquetes para evitar bloqueo por spam de Discord
+        // Espera 1 segundo entre envíos para no sobrecargar la Webhook de Discord
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      mostrarEstado(`¡Éxito total! Se enviaron los ${enviadosExito} archivos a Discord.`, true);
+      mostrarEstado(`¡Proceso completado! Se enviaron ${total} mensajes a Discord.`, true);
       fileInput.value = ''; 
       document.getElementById('lista-archivos').style.display = 'none';
+      btn.disabled = false;
     }
 
     function mostrarEstado(msg, esExito) {
